@@ -11,7 +11,21 @@ Windows 桌面常驻小精灵，显示 **Codex 账户额度重置** 与 **重置
 
 这是独立的本机桌面程序和 Codex 技能插件，不是 OpenAI 官方 Pets。支持 Windows 10/11；桌面程序无需 API Key。账户同步需要已登录、可提供账户状态工具的 Codex 桌面端。
 
-## 一键安装
+## 通过 Codex 安装（优先入口）
+
+在 PowerShell 或 Codex 的终端中执行：
+
+```powershell
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.3
+codex plugin add reset-reminder@codex-reset-pet
+codex plugin list --marketplace codex-reset-pet
+```
+
+安装后新建 Codex 聊天即可使用查询和提醒插件。**这组命令只安装 Codex 插件，不安装 Python/Pillow，也不会启动桌面宠物。** 需要桌面上的剩余额度窗口和刷新按钮时，再执行下方桌面安装；桌面安装器也会注册配套插件。
+
+命令依据 [OpenAI 官方 CLI 文档](https://learn.chatgpt.com/docs/cli/reference)。
+
+## 桌面宠物一键安装
 
 在 **PowerShell** 中复制运行下面这一行（固定安装 v0.4.3）：
 
@@ -25,6 +39,57 @@ $f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBa
 
 安装位置：`%LOCALAPPDATA%\CodexResetPet`。不会自动建立定时任务或开机自启，也不会读取你的登录凭证。可先查看 [安装脚本](install.ps1)，或从 [Release](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.3) 手动下载。
 
+## 其他安装方式
+
+### 手动下载发布包（无需 Git）
+
+从 [v0.4.3 Release](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.3) 下载 `codex-reset-pet-v0.4.3.zip` 和 `SHA256SUMS.txt`。将两者放在同一目录，运行下面的校验命令；仅在校验通过后解压，并在解压后的 `codex-reset-pet` 目录运行安装器。
+
+```powershell
+$archive = (Resolve-Path '.\codex-reset-pet-v0.4.3.zip').Path
+$expected = ((Get-Content '.\SHA256SUMS.txt' | Where-Object { $_ -match '\s+codex-reset-pet-v0\.4\.3\.zip$' }) -split '\s+')[0]
+$sha256 = [Security.Cryptography.SHA256]::Create()
+$archiveStream = [IO.File]::OpenRead($archive)
+try { $actual = ([BitConverter]::ToString($sha256.ComputeHash($archiveStream))).Replace('-','') }
+finally { $archiveStream.Dispose(); $sha256.Dispose() }
+if ($actual -ne $expected) { throw 'SHA-256 mismatch' }
+```
+
+在解压后的目录中：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath .
+```
+
+### Git / 源码安装
+
+需要已安装 Git。在准备保存源码的目录运行：
+
+```powershell
+git clone --branch v0.4.3 --depth 1 https://github.com/FantasyWorld-G/codex-reset-pet.git
+Set-Location codex-reset-pet
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath .
+```
+
+也可从 GitHub 下载源码 ZIP，解压后运行同一条 `install.ps1 -SourcePath .` 命令。安装器仍会检查 Python 和安装 Pillow，需要相应网络连接。
+
+### 仅安装桌面程序 / 自定义目录
+
+以下为解压后的发布包或源码目录中的替代命令，按需选择一条：
+
+```powershell
+# 仅安装桌面程序，跳过 Codex 插件注册
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath . -SkipPlugin
+
+# 安装到指定目录
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath . -InstallRoot 'D:\Apps\CodexResetPet'
+
+# 安装但暂不启动，也不创建桌面快捷方式
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath . -NoLaunch -NoShortcut
+```
+
+仅安装桌面程序仍需已登录的 Codex CLI 才能使用额度刷新。完整参数见 [使用说明](docs/使用说明.md)。
+
 ## 一键更新（已安装用户）
 
 先右键人物，选择“退出桌面小精灵”，再在 **PowerShell** 运行：
@@ -35,9 +100,45 @@ $f = Join-Path $env:TEMP 'codex-reset-pet-update.ps1'; Invoke-WebRequest -UseBas
 
 更新器会查询 GitHub 最新稳定版，下载对应版本的安装器；安装器校验发布包 SHA-256，更新程序、插件及快捷方式，最后启动新版。保留 `data/` 中的账户快照、窗口位置和设置，不创建定时任务。更新失败时按提示处理后重试。
 
-自定义安装目录的用户，在最后的命令末尾添加 `-InstallRoot 'D:\Apps\CodexResetPet'`，路径必须和原安装位置一致。仅安装桌面程序时可加 `-SkipPlugin`；暂不启动可加 `-NoLaunch`。从源码目录直接运行的用户，应更新源码，或用 `install.ps1 -SourcePath .` 安装；本更新器面向安装器管理的目录。
+自定义安装目录的用户，在最后的命令末尾添加 `-InstallRoot 'D:\Apps\CodexResetPet'`，路径必须和原安装位置一致。仅安装桌面程序时可加 `-SkipPlugin`；暂不启动可加 `-NoLaunch`，不创建快捷方式可加 `-NoShortcut`。从源码目录直接运行的用户，应更新源码，或用 `install.ps1 -SourcePath .` 安装；本更新器面向安装器管理的目录。
 
 更新后展开气泡，应能看到“剩余额度”和“刷新”按钮。旧聊天可能仍使用插件缓存，插件更新后请开启新聊天。
+
+### 仅更新 Codex 插件
+
+适用于按上方命令添加的 Git 市场。将固定版本切换到 v0.4.3：
+
+```powershell
+codex plugin marketplace remove codex-reset-pet
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.3
+codex plugin add reset-reminder@codex-reset-pet
+```
+
+以后升级时将 `v0.4.3` 替换为已发布的新标签。若你的 Git 市场明确跟踪 `main`，可改用下面两条；固定标签执行 `upgrade` 不会自动跳到新版本：
+
+```powershell
+codex plugin marketplace upgrade codex-reset-pet
+codex plugin add reset-reminder@codex-reset-pet
+```
+
+如果由桌面安装器注册的是本地市场，请使用前面的桌面更新命令。仅更新插件不会升级桌面文件；完成后新建 Codex 聊天。[官方市场命令说明](https://learn.chatgpt.com/docs/cli/reference)。
+
+## 再次启动与检查版本
+
+双击桌面快捷方式即可。也可读取安装记录启动，不需要写死版本目录：
+
+```powershell
+$petRoot = Join-Path $env:LOCALAPPDATA 'CodexResetPet'
+$installed = Get-Content -Raw -LiteralPath (Join-Path $petRoot 'install.json') | ConvertFrom-Json
+powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $installed.appRoot 'start.ps1') -DataDir $installed.dataDir -PythonExe $installed.pythonw
+```
+
+自定义安装时把 `$petRoot` 改为原安装目录。检查桌面版本和已安装插件：
+
+```powershell
+Get-Content -Raw -LiteralPath (Join-Path $petRoot 'install.json') | ConvertFrom-Json | Select-Object version,appRoot,dataDir
+codex plugin list --marketplace codex-reset-pet
+```
 
 ## 第一次使用
 
@@ -72,23 +173,6 @@ $f = Join-Path $env:TEMP 'codex-reset-pet-update.ps1'; Invoke-WebRequest -UseBas
 账户卡片还显示“剩余额度 XX%”和进度条，数值为 Codex 官方账户状态的 `100 - usedPercent`，随账户快照更新。无数据时显示 `--`，过期快照标记“上次同步”。窗口每 5 秒重读本地数据，每 0.5 秒重算倒计时，这两个操作不会请求账户。点击“刷新”才通过 Codex 的 `account/rateLimits/read` 接口获取最新额度，不开启定时任务，也不发起模型对话。刷新中禁止重复点击，失败会提示并保留上次数据。
 
 手动刷新数据保存在独立的 `desktop-usage.json`，不覆盖插件的完整 `usage.json`。窗口选择时间较新的额度；当前 CLI 可能只返回重置卡数量，不含到期明细，此时卡片标记“上次记录”，需要完整账户同步才能更新卡到期信息。
-
-## 其他安装方式
-
-已有 Python 3.10+（含 tkinter）的用户可下载源码，运行：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath .
-```
-
-仅安装 Codex 查询插件，不安装桌面程序：
-
-```powershell
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.3
-codex plugin add reset-reminder@codex-reset-pet
-```
-
-插件市场的安装方式见 [OpenAI 官方插件文档](https://developers.openai.com/plugins/build/plugins)。单独安装查询插件不会安装 Python/Pillow，也不会自动启动小精灵。
 
 ## 说明书和维护
 

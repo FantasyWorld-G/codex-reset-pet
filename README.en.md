@@ -11,7 +11,21 @@ A persistent Windows desktop pet that displays **Codex account quota resets** an
 
 This is an independent local desktop application and Codex skill plugin, not an official OpenAI Pet. It supports Windows 10/11 and does not require an API key. Account synchronization requires a signed-in Codex desktop environment that provides the account usage tool. The desktop interface currently uses Chinese; this README is its English guide.
 
-## One-command installation
+## Install through Codex (plugin first)
+
+In PowerShell or the Codex terminal, run:
+
+```powershell
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.3
+codex plugin add reset-reminder@codex-reset-pet
+codex plugin list --marketplace codex-reset-pet
+```
+
+Open a new Codex chat after installation. This installs the query/reminder plugin only; it does not install Python/Pillow or launch the desktop pet. For the desktop window with remaining quota and a Refresh button, continue with the desktop installation below. The desktop installer can register the plugin too.
+
+Commands are documented in the [official OpenAI CLI reference](https://learn.chatgpt.com/docs/cli/reference).
+
+## Desktop pet: one-command installation
 
 Paste this line into **PowerShell** to install the pinned **v0.4.3** release:
 
@@ -25,6 +39,57 @@ The installer downloads the release package and verifies its SHA-256 checksum. I
 
 The default installation directory is `%LOCALAPPDATA%\CodexResetPet`. Installation does not create scheduled checks, enable Windows startup, or read your login credentials. You can inspect the [installer](install.ps1) or download the package manually from [Releases](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.3).
 
+## Other installation options
+
+### Manual release download (no Git required)
+
+Download `codex-reset-pet-v0.4.3.zip` and `SHA256SUMS.txt` from [Release v0.4.3](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.3). Put both files in one directory and verify the checksum before extracting the archive:
+
+```powershell
+$archive = (Resolve-Path '.\codex-reset-pet-v0.4.3.zip').Path
+$expected = ((Get-Content '.\SHA256SUMS.txt' | Where-Object { $_ -match '\s+codex-reset-pet-v0\.4\.3\.zip$' }) -split '\s+')[0]
+$sha256 = [Security.Cryptography.SHA256]::Create()
+$archiveStream = [IO.File]::OpenRead($archive)
+try { $actual = ([BitConverter]::ToString($sha256.ComputeHash($archiveStream))).Replace('-','') }
+finally { $archiveStream.Dispose(); $sha256.Dispose() }
+if ($actual -ne $expected) { throw 'SHA-256 mismatch' }
+```
+
+In the extracted `codex-reset-pet` directory, run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath .
+```
+
+### Git / source installation
+
+With Git installed, run this in the directory where you want to keep the source:
+
+```powershell
+git clone --branch v0.4.3 --depth 1 https://github.com/FantasyWorld-G/codex-reset-pet.git
+Set-Location codex-reset-pet
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath .
+```
+
+You can also download a source ZIP from GitHub and run the same `install.ps1 -SourcePath .` command after extraction. The installer still checks Python and installs Pillow, which requires the corresponding network access.
+
+### Desktop only / custom directory
+
+Choose one of these alternatives from the extracted package or source directory:
+
+```powershell
+# Install the desktop app without registering the Codex plugin
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath . -SkipPlugin
+
+# Use a custom installation directory
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath . -InstallRoot 'D:\Apps\CodexResetPet'
+
+# Do not launch or create a desktop shortcut yet
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath . -NoLaunch -NoShortcut
+```
+
+Desktop-only installations still require a signed-in Codex CLI for quota refresh. See the [complete user guide (Chinese)](docs/使用说明.md) for all options.
+
 ## One-command update (existing installations)
 
 First right-click the pet and choose `退出桌面小精灵` (Exit), then run this in **PowerShell**:
@@ -35,9 +100,45 @@ $f = Join-Path $env:TEMP 'codex-reset-pet-update.ps1'; Invoke-WebRequest -UseBas
 
 The updater finds the latest stable GitHub release and downloads its installer. The installer verifies the package SHA-256, updates the application, plugin, and shortcut, then launches the new version. Account snapshots, window position, and settings in `data/` are preserved. No scheduled task is created. If updating fails, resolve the reported error and retry.
 
-For a custom installation, append `-InstallRoot 'D:\Apps\CodexResetPet'` to the final command, using the original installation directory. Add `-SkipPlugin` for a desktop-only installation or `-NoLaunch` to postpone launch. Users running directly from a source checkout should update their source or install with `install.ps1 -SourcePath .`; this updater targets installer-managed directories.
+For a custom installation, append `-InstallRoot 'D:\Apps\CodexResetPet'` to the final command, using the original installation directory. Add `-SkipPlugin` for a desktop-only installation `-NoLaunch` to postpone launch, or `-NoShortcut` to skip shortcut creation. Users running directly from a source checkout should update their source or install with `install.ps1 -SourcePath .`; this updater targets installer-managed directories.
 
 After updating, expand the bubble to see the remaining quota and Refresh button. Open a new Codex chat to load the updated companion plugin.
+
+### Update only the Codex plugin
+
+For a Git marketplace installed using the commands above, switch its pinned version to v0.4.3 with:
+
+```powershell
+codex plugin marketplace remove codex-reset-pet
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.3
+codex plugin add reset-reminder@codex-reset-pet
+```
+
+For a future release, replace `v0.4.3` with its published tag. If your Git marketplace intentionally tracks `main`, use the following instead; refreshing a pinned tag does not advance to a newer release:
+
+```powershell
+codex plugin marketplace upgrade codex-reset-pet
+codex plugin add reset-reminder@codex-reset-pet
+```
+
+If the desktop installer registered a local marketplace, use the desktop updater instead. Plugin-only updates do not update desktop files. Start a new Codex chat afterward. [Official marketplace commands](https://learn.chatgpt.com/docs/cli/reference).
+
+## Start again / check installation
+
+Double-click the desktop shortcut, or read the current installation metadata and launch without hard-coding a version:
+
+```powershell
+$petRoot = Join-Path $env:LOCALAPPDATA 'CodexResetPet'
+$installed = Get-Content -Raw -LiteralPath (Join-Path $petRoot 'install.json') | ConvertFrom-Json
+powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $installed.appRoot 'start.ps1') -DataDir $installed.dataDir -PythonExe $installed.pythonw
+```
+
+For a custom installation, set `$petRoot` to its original directory. To check the desktop version and installed Codex plugin:
+
+```powershell
+Get-Content -Raw -LiteralPath (Join-Path $petRoot 'install.json') | ConvertFrom-Json | Select-Object version,appRoot,dataDir
+codex plugin list --marketplace codex-reset-pet
+```
 
 ## First-time setup
 
@@ -72,23 +173,6 @@ Dates and remaining-time labels change color independently as their deadlines ap
 The account card also displays the remaining quota percentage and a progress bar, calculated as `100 - usedPercent` from Codex's account status. It updates when the account snapshot is refreshed. Missing data is shown as `--`; stale data is labeled “上次同步” (last synchronized value). The window rereads local data every 5 seconds and recalculates countdowns every 0.5 seconds; neither operation requests account data. Click Refresh to call Codex’s read-only `account/rateLimits/read` endpoint. This does not enable scheduled tasks or start a model turn. Duplicate clicks are disabled while refreshing; failures show a message and retain the last data.
 
 Manual refreshes use a separate `desktop-usage.json` cache and do not overwrite the plugin’s full `usage.json` snapshot. The newest quota snapshot wins. Some CLI versions return only the reset-credit count, without expiration details; the card then shows “上次记录” (previous record). Perform a full account synchronization to update credit expiration details.
-
-## Other installation options
-
-If Python 3.10+ with tkinter is already installed, download the source code, open PowerShell in the extracted repository directory, and run:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath .
-```
-
-To install only the Codex query plugin, without the desktop application:
-
-```powershell
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.3
-codex plugin add reset-reminder@codex-reset-pet
-```
-
-See the [official OpenAI plugin documentation](https://developers.openai.com/plugins/build/plugins) for marketplace installation details. Installing only the query plugin does not install Python or Pillow and does not start the desktop pet.
 
 ## Documentation and maintenance
 
