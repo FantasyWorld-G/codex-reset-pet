@@ -15,7 +15,7 @@ Windows 桌面常驻小精灵，显示 **Codex 账户额度重置** 与 **重置
 
 在 **PowerShell** 中复制运行下面这一行（固定安装 v0.4.2）：
 
-下文功能以 `main` 分支源码为准；v0.4.2 安装包不包含后续新增的剩余额度进度条。需要最新功能时，请使用下方的源码安装方式。
+下文功能以 `main` 分支源码为准；v0.4.2 安装包不包含后续新增的剩余额度进度条和手动刷新按钮。需要最新功能时，请使用下方的源码安装方式。
 
 ```powershell
 $f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.2/install.ps1' -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f
@@ -31,7 +31,7 @@ $f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBa
 
 > 使用 reset-reminder 插件，把我的账户额度重置和重置卡到期信息同步到已安装的桌面小精灵，只同步一次，不创建定时任务。
 
-首次同步之前，窗口显示“等待账户同步”，不会带入发布者的账户信息。如果当前 Codex 版本没有账户状态工具，只能使用宠物互动和公开 Tibo 消息查询，不能显示真实账户倒计时。
+首次同步之前，窗口显示“等待账户同步”，不会带入发布者的账户信息。最新源码版也可点击“刷新”，通过已登录的 Codex CLI 获取额度和重置时间；重置卡到期明细仍需完整账户同步。
 
 想自动同步时，再单独告诉 Codex：
 
@@ -48,13 +48,16 @@ $f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBa
 | 松开拖拽 | 开心弹跳，再回到待机 |
 | 10 秒无互动 | 直接进入并持续保持睡眠，头顶循环冒出由小变大的 zzz |
 | 睡眠时点击或拖动 | 唤醒并响应操作；按住期间不会入睡 |
+| 点击“刷新” | 从已登录的 Codex CLI 获取最新额度和重置时间，过程中不阻塞动画 |
 | 点击 `tibo reset` | 默认浏览器打开 [Tibo 页面](https://codex-reset.com/zh/tibo) |
 | 点击气泡的 × | 只收起气泡 |
 | 右键人物 → 退出桌面小精灵 | 退出程序 |
 
 两项时间按剩余时间分别变色，人物保留原始配色。动画状态直接切换，不插入其他表情；目标刷新率 60Hz，实际表现取决于电脑负载。账户快照超过 90 分钟会显示“数据待同步”，不会把旧数据当成实时状态。
 
-账户卡片还显示“剩余额度 XX%”和进度条，数值为 Codex 官方账户状态的 `100 - usedPercent`，随账户快照更新。无数据时显示 `--`，过期快照标记“上次同步”。关闭定时检查后，需要在 Codex 中主动同步一次才能取得新的用量。
+账户卡片还显示“剩余额度 XX%”和进度条，数值为 Codex 官方账户状态的 `100 - usedPercent`，随账户快照更新。无数据时显示 `--`，过期快照标记“上次同步”。窗口每 5 秒重读本地数据，每 0.5 秒重算倒计时，这两个操作不会请求账户。点击“刷新”才通过 Codex 的 `account/rateLimits/read` 接口获取最新额度，不开启定时任务，也不发起模型对话。刷新中禁止重复点击，失败会提示并保留上次数据。
+
+手动刷新数据保存在独立的 `desktop-usage.json`，不覆盖插件的完整 `usage.json`。窗口选择时间较新的额度；当前 CLI 可能只返回重置卡数量，不含到期明细，此时卡片标记“上次记录”，需要完整账户同步才能更新卡到期信息。
 
 ## 其他安装方式
 
@@ -89,4 +92,4 @@ python -m unittest discover -s plugins/reset-reminder/tests -v
 python scripts/build_release.py
 ```
 
-32 项测试覆盖状态机、倒计时、重置卡筛选、消息去重和 Windows 原生拖拽回归。非 Windows 环境会跳过原生窗口集成测试。发布包和校验文件生成在 `dist/`，构建使用明确的文件列表，排除运行数据和缓存。
+40 项测试覆盖状态机、倒计时、重置卡筛选、消息去重和 Windows 原生拖拽回归。非 Windows 环境会跳过原生窗口集成测试。发布包和校验文件生成在 `dist/`，构建使用明确的文件列表，排除运行数据和缓存。

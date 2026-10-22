@@ -1,4 +1,4 @@
-"""Local Windows companion. Reads only the snapshot written by Codex; no network."""
+"""Windows companion with local snapshots and on-demand Codex quota refresh."""
 import argparse
 import ctypes
 import hashlib
@@ -9,6 +9,8 @@ import sys
 import logging
 import faulthandler
 import webbrowser
+import queue
+import threading
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 import time
@@ -22,6 +24,7 @@ from layered_sprite import LayeredSprite, premultiplied_bgra
 from animation_state import AnimationStateMachine, State, animation_pose, sleep_particles
 
 from check_reset import CN, account_snapshot, card_snapshot, epoch, read_json, write_json
+from refresh_usage import RefreshError, fetch_snapshot, save_snapshot
 
 TRANSPARENT = '#ff00ff'
 BG = '#182735'
@@ -91,7 +94,7 @@ def view_model(envelope, now):
     return {'rows': rows, 'stale': stale, 'captured': captured,
             'remaining_percent': quota['remaining_percent'] if quota else None,
             'pet_color': time_color(min(deadlines)) if deadlines and not stale else MUTED,
-            'footer': ('数据待同步 · 显示上次记录' if stale else '已同步 ' + datetime.fromtimestamp(captured, CN).strftime('%H:%M') + ' · 本机实时倒计时')}
+            'footer': ('数据待同步 · 显示上次记录' if stale else '已同步 ' + datetime.fromtimestamp(captured, CN).strftime('%H:%M') + ' · 本机倒计时')}
 
 
 def unavailable():
@@ -99,6 +102,29 @@ def unavailable():
                        'detail': '', 'color': MUTED} for title in ('账户额度重置', '重置卡到期')],
             'remaining_percent': None,
             'pet_color': MUTED, 'stale': True, 'footer': '数据不可用 · 等待 Codex 同步'}
+
+
+def display_model(envelope, manual, now):
+    """Choose the newest valid quota without relabelling old card details as fresh."""
+    models = []
+    for source in (envelope, manual):
+        try:
+            models.append(view_model(source, now) if isinstance(source, dict) else None)
+        except (ValueError, TypeError, KeyError, OverflowError):
+            models.append(None)
+    original, refreshed = models
+    if refreshed is None or (original and original['captured'] >= refreshed['captured']):
+        return original or unavailable()
+    credits = manual['usage'].get('rateLimitResetCredits')
+    if not isinstance(credits, dict) or not isinstance(credits.get('credits'), list):
+        row = dict((original or unavailable())['rows'][1])
+        row['title'] = '重置卡到期 · 上次记录' if original else '重置卡到期 · 待完整同步'
+        row['color'] = MUTED
+        refreshed['rows'][1] = row
+        refreshed['pet_color'] = refreshed['rows'][0]['color']
+    refreshed['footer'] = ('额度待刷新' if refreshed['stale'] else '额度已同步 ' +
+                           datetime.fromtimestamp(refreshed['captured'], CN).strftime('%H:%M'))
+    return refreshed
 
 
 class Companion:
@@ -140,6 +166,13 @@ class Companion:
                 lambda x,y:self.menu(SimpleNamespace(x_root=x,y_root=y)),
                 self.cancel_drag)
         self.envelope = None
+        self.manual_usage = self.usage.with_name('desktop-usage.json')
+        self.manual_envelope = None
+        self.refresh_results = queue.Queue()
+        self.refresh_cancel = threading.Event()
+        self.refresh_busy = False
+        self.refresh_message = ''
+        self.refresh_message_until = 0
         self.last_read = 0
         self.model = unavailable()
         x = max(0, self.root.winfo_screenwidth()-self.WIDTH-34)
@@ -158,6 +191,10 @@ class Companion:
         self.tibo_button = tk.Button(self.canvas,text='tibo reset',command=self.open_tibo,
             font=('Microsoft YaHei UI',-12),fg='#ffffff',bg=SURFACE,
             activeforeground='#ffffff',activebackground='#365469',
+            relief='flat',borderwidth=0,highlightthickness=0,cursor='hand2',takefocus=True)
+        self.refresh_button = tk.Button(self.canvas,text='刷新',command=self.refresh_usage,
+            font=('Microsoft YaHei UI',-12),fg='#ffffff',bg='#365469',
+            activeforeground='#ffffff',activebackground='#44657d',disabledforeground=MUTED,
             relief='flat',borderwidth=0,highlightthickness=0,cursor='hand2',takefocus=True)
         self.canvas.bind('<ButtonPress-1>', self.press)
         self.canvas.bind('<B1-Motion>', self.drag)
@@ -241,6 +278,7 @@ class Companion:
             'sleep_after_seconds':self.animation.SLEEP_AFTER,
             'help_text':help_text, 'sprite_border':False,
             'tibo_button_visible':bool(self.tibo_button.winfo_ismapped()),
+            'refresh_button_visible':bool(self.refresh_button.winfo_ismapped()),
             'tibo_url':TIBO_URL,
             'alpha_mode':'per_pixel' if self.layered_sprite else 'tk',
             'target_fps':TARGET_FPS,
@@ -271,15 +309,17 @@ class Companion:
                 y = 58+i*139
                 self.rounded(20, y, 330, 131 if i == 0 else 91, 13, SURFACE)
                 dot = c.create_oval(32,y+14,38,y+20,fill=row['color'],outline='')
-                self.text(46,y+9,row['title'],12, MUTED)
+                title = self.text(46,y+9,row['title'],12, MUTED)
                 date = self.text(32,y+29,row['date'],25,row['color'],True)
                 left = self.text(32,y+65,row['remaining'],12,TEXT)
-                self.row_items.append((dot,date,left))
+                self.row_items.append((dot,date,left,title))
             self.quota_text = self.text(32,147,'',12,TEXT,bold=True,tags='quota')
             c.create_rectangle(32,173,338,179,fill=BG,outline='',tags='quota')
             self.quota_fill = c.create_rectangle(32,173,32,179,fill='#8acdf0',outline='',tags='quota')
             self.update_quota()
-            self.footer_item = self.text(25, 300, model['footer'],11,MUTED)
+            c.create_window(274,142,anchor='nw',width=64,height=26,
+                            window=self.refresh_button,tags='refresh')
+            self.footer_item = self.text(25, 300, self.footer_text(),11,MUTED,width=207)
             c.create_window(238,294,anchor='nw',width=112,height=28,
                             window=self.tibo_button,tags='tibo_link')
         # Opaque backplates prevent ClearType and alpha edges mixing with the
@@ -308,13 +348,59 @@ class Companion:
                                   state='normal' if percent is not None and percent > 0 else 'hidden')
 
     def update_display(self):
-        for row, (dot,date,left) in zip(self.model['rows'], self.row_items):
+        for row, (dot,date,left,title) in zip(self.model['rows'], self.row_items):
             self.canvas.itemconfigure(dot,fill=row['color'])
             self.canvas.itemconfigure(date,text=row['date'],fill=row['color'])
             self.canvas.itemconfigure(left,text=row['remaining'])
+            self.canvas.itemconfigure(title,text=row['title'])
         if self.expanded:
             self.update_quota()
-            self.canvas.itemconfigure(self.footer_item,text=self.model['footer'])
+            self.canvas.itemconfigure(self.footer_item,text=self.footer_text())
+
+    def footer_text(self):
+        if self.refresh_busy:
+            return '正在读取 Codex 额度…'
+        if time.monotonic() < self.refresh_message_until:
+            return self.refresh_message
+        return self.model['footer']
+
+    def refresh_usage(self):
+        if self.closed or self.refresh_busy:
+            return
+        self.animation.touch(time.monotonic())
+        self.refresh_busy = True
+        self.refresh_button.configure(text='刷新中',state='disabled')
+        self.update_display()
+
+        def worker():
+            try:
+                snapshot = fetch_snapshot(cancel=self.refresh_cancel)
+                if self.refresh_cancel.is_set():
+                    return
+                save_snapshot(self.manual_usage, snapshot)
+                self.refresh_results.put((True, '额度刷新成功'))
+            except RefreshError as error:
+                self.refresh_results.put((False, str(error)))
+            except OSError:
+                self.refresh_results.put((False, '无法保存额度，请重试'))
+            except Exception:
+                logging.exception('Quota refresh failed')
+                self.refresh_results.put((False, '刷新失败，请重试'))
+
+        # Background I/O never calls Tk or the native sprite window.
+        threading.Thread(target=worker,daemon=True).start()
+
+    def collect_refresh(self):
+        try:
+            success, message = self.refresh_results.get_nowait()
+        except queue.Empty:
+            return
+        self.refresh_busy = False
+        self.refresh_button.configure(text='刷新',state='normal')
+        self.refresh_message = message
+        self.refresh_message_until = time.monotonic()+12
+        if success:
+            self.last_read = 0
 
     def react(self, action):
         self.animation.play(action,time.monotonic())
@@ -367,6 +453,7 @@ class Companion:
         if self.closed:
             return
         now = time.time()
+        self.collect_refresh()
         if now-self.last_read >= 5:
             self.last_read = now
             try:
@@ -374,10 +461,11 @@ class Companion:
             except (OSError, ValueError):
                 # An unavailable input is not silently represented as a fresh account.
                 self.envelope = None
-        try:
-            self.model = view_model(self.envelope, now) if self.envelope else unavailable()
-        except (ValueError, TypeError, KeyError, OverflowError):
-            self.model = unavailable()
+            try:
+                self.manual_envelope = read_json(self.manual_usage)
+            except (OSError, ValueError):
+                self.manual_envelope = None
+        self.model = display_model(self.envelope, self.manual_envelope, now)
         if not hasattr(self,'sprite_item'):
             self.draw()
         else:
@@ -453,6 +541,8 @@ class Companion:
         menu.add_separator()
         menu.add_command(label='收起气泡' if self.expanded else '展开重置时间', command=self.toggle)
         menu.add_command(label='重新读取账户快照', command=lambda: setattr(self,'last_read',0))
+        menu.add_command(label='刷新 Codex 额度', command=self.refresh_usage,
+                         state='disabled' if self.refresh_busy else 'normal')
         if not self.root.overrideredirect():
             menu.add_command(label='切换为无边框桌面悬浮', command=self.enable_overlay)
         menu.add_separator()
@@ -478,6 +568,7 @@ class Companion:
         if self.closed:
             return
         self.closed = True
+        self.refresh_cancel.set()
         self.save()
         if self.layered_sprite:
             self.layered_sprite.close()
