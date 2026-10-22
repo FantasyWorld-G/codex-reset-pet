@@ -1,5 +1,7 @@
 # Codex Reset Pet · 桌面重置小精灵
 
+由于本人经常忘记重置的节点，导致很多重置都浪费了。然后搞了一个这个桌面插件。内置了tibo reset按钮(https://codex-reset.com/zh/tibo)，点击打开即可。
+
 Windows 桌面常驻小精灵，显示 **Codex 账户额度重置** 与 **重置卡到期** 的北京时间、剩余时长，并提供 Tibo 消息查询插件。
 
 <img src="docs/pet-preview.png" width="288" alt="睡眠状态渲染预览，头顶冒出逐渐变大的 zzz">
