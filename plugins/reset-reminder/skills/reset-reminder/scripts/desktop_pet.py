@@ -29,7 +29,7 @@ SURFACE = '#223545'
 MUTED = '#93a8b8'
 TEXT = '#edf4f8'
 SPRITE_SIZE = 288
-PET_X, PET_Y = 275,449
+PET_X, PET_Y = 275,489
 TARGET_FPS = 60
 TIBO_URL = 'https://codex-reset.com/zh/tibo'
 
@@ -69,7 +69,7 @@ def view_model(envelope, now):
     account = account_snapshot(envelope, captured)
     stale = now-captured > 5400
     windows = [w for w in account['windows'] if w['resets_at'] is not None]
-    quota = min(windows, key=lambda w: w['resets_at']) if windows else None
+    quota = min(windows, key=lambda w: w['resets_at']) if windows else next(iter(account['windows']),None)
     raw_cards = envelope['usage'].get('rateLimitResetCredits')
     current_cards = card_snapshot(raw_cards, now)
     cards = current_cards['cards'] if current_cards is not None else []
@@ -89,6 +89,7 @@ def view_model(envelope, now):
                      'detail': detail, 'color': time_color(seconds) if not stale else MUTED})
     deadlines = [r['seconds'] for r in rows if r['seconds'] is not None]
     return {'rows': rows, 'stale': stale, 'captured': captured,
+            'remaining_percent': quota['remaining_percent'] if quota else None,
             'pet_color': time_color(min(deadlines)) if deadlines and not stale else MUTED,
             'footer': ('数据待同步 · 显示上次记录' if stale else '已同步 ' + datetime.fromtimestamp(captured, CN).strftime('%H:%M') + ' · 本机实时倒计时')}
 
@@ -96,11 +97,12 @@ def view_model(envelope, now):
 def unavailable():
     return {'rows': [{'title': title, 'date': '等待账户同步', 'remaining': 'Codex 更新后会自动显示',
                        'detail': '', 'color': MUTED} for title in ('账户额度重置', '重置卡到期')],
+            'remaining_percent': None,
             'pet_color': MUTED, 'stale': True, 'footer': '数据不可用 · 等待 Codex 同步'}
 
 
 class Companion:
-    WIDTH, HEIGHT = 370, 550
+    WIDTH, HEIGHT = 370, 590
 
     def __init__(self, usage, settings, windowed=False):
         self.usage, self.settings = Path(usage), Path(settings)
@@ -233,6 +235,7 @@ class Companion:
             'pid': os.getpid(), 'visible': bool(self.root.winfo_viewable()),
             'topmost': bool(self.root.attributes('-topmost')), 'expanded': self.expanded,
             'geometry': self.root.geometry(), 'rows': self.model['rows'],
+            'remaining_percent': self.model['remaining_percent'],
             'snapshot_stale': self.model['stale'], 'started_at': time.time(),
             'sprite_loaded': len(self.sprites), 'interaction': self.interaction,
             'sleep_after_seconds':self.animation.SLEEP_AFTER,
@@ -259,35 +262,50 @@ class Companion:
         self.row_items = []
         self.last_frame = None
         if self.expanded:
-            self.rounded(5, 5, 360, 282, 22, BG, tags='bubble')
-            c.create_polygon(274,283,304,283,289,306, fill=BG, outline=BG, tags='bubble')
+            self.rounded(5, 5, 360, 322, 22, BG, tags='bubble')
+            c.create_polygon(274,323,304,323,289,346, fill=BG, outline=BG, tags='bubble')
             self.text(25, 21, '重置时间', 15, bold=True, tags='header')
             self.text(212, 25, '北京时间 · UTC+8', 11, MUTED)
             self.text(338, 18, '×', 21, MUTED, tags='collapse')
             for i, row in enumerate(model['rows']):
-                y = 58+i*99
-                self.rounded(20, y, 330, 91, 13, SURFACE)
+                y = 58+i*139
+                self.rounded(20, y, 330, 131 if i == 0 else 91, 13, SURFACE)
                 dot = c.create_oval(32,y+14,38,y+20,fill=row['color'],outline='')
                 self.text(46,y+9,row['title'],12, MUTED)
                 date = self.text(32,y+29,row['date'],25,row['color'],True)
                 left = self.text(32,y+65,row['remaining'],12,TEXT)
                 self.row_items.append((dot,date,left))
-            self.footer_item = self.text(25, 260, model['footer'],11,MUTED)
-            c.create_window(238,254,anchor='nw',width=112,height=28,
+            self.quota_text = self.text(32,147,'',12,TEXT,bold=True,tags='quota')
+            c.create_rectangle(32,173,338,179,fill=BG,outline='',tags='quota')
+            self.quota_fill = c.create_rectangle(32,173,32,179,fill='#8acdf0',outline='',tags='quota')
+            self.update_quota()
+            self.footer_item = self.text(25, 300, model['footer'],11,MUTED)
+            c.create_window(238,294,anchor='nw',width=112,height=28,
                             window=self.tibo_button,tags='tibo_link')
         # Opaque backplates prevent ClearType and alpha edges mixing with the
         # Windows transparency key. Static text is not deleted every frame.
         if self.expanded:
-            self.rounded(16,321,160,142,14,BG,tags='help')
-            self.text(28,334,'点击 · 表情 / 展开气泡',12,'#ffffff',tags='help')
-            self.text(28,359,'拖拽 · 提起并晃动',12,'#ffffff',tags='help')
-            self.text(28,384,'松手 · 落地弹跳',12,'#ffffff',tags='help')
-            self.text(28,410,'右键 · 玩法与退出',11,'#ffffff',tags='help')
-            self.state_text = self.text(28,440,'点击互动',11,'#ffffff',tags='help')
+            self.rounded(16,361,160,142,14,BG,tags='help')
+            self.text(28,374,'点击 · 表情 / 展开气泡',12,'#ffffff',tags='help')
+            self.text(28,399,'拖拽 · 提起并晃动',12,'#ffffff',tags='help')
+            self.text(28,424,'松手 · 落地弹跳',12,'#ffffff',tags='help')
+            self.text(28,450,'右键 · 玩法与退出',11,'#ffffff',tags='help')
+            self.state_text = self.text(28,480,'点击互动',11,'#ffffff',tags='help')
         else:
             self.state_text = None
         self.sprite_item = None if self.layered_sprite else c.create_image(PET_X,PET_Y,image=self.rendered_sprite(0,0),tags='pet')
         self.last_label = None
+
+    def update_quota(self):
+        percent = self.model['remaining_percent']
+        stale = self.model['stale']
+        label = '剩余额度 -- · 等待同步' if percent is None else f'剩余额度 {percent:g}%'
+        if percent is not None and stale:
+            label += ' · 上次同步'
+        self.canvas.itemconfigure(self.quota_text,text=label,fill=MUTED if stale else TEXT)
+        self.canvas.coords(self.quota_fill,32,173,32+306*(percent or 0)/100,179)
+        self.canvas.itemconfigure(self.quota_fill,fill=MUTED if stale else '#8acdf0',
+                                  state='normal' if percent is not None and percent > 0 else 'hidden')
 
     def update_display(self):
         for row, (dot,date,left) in zip(self.model['rows'], self.row_items):
@@ -295,6 +313,7 @@ class Companion:
             self.canvas.itemconfigure(date,text=row['date'],fill=row['color'])
             self.canvas.itemconfigure(left,text=row['remaining'])
         if self.expanded:
+            self.update_quota()
             self.canvas.itemconfigure(self.footer_item,text=self.model['footer'])
 
     def react(self, action):
