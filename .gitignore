@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+runtime/
+data/
+work/
+dist/
+*.log
+usage.json
+state.json
+desktop-settings.json
+desktop-runtime.json
+install.json
+.env
+.env.*
+auth.json

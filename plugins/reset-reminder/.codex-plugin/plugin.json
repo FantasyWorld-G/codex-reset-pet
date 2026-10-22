@@ -1,0 +1,17 @@
+{
+  "name": "reset-reminder",
+  "version": "0.4.1",
+  "description": "查询 Codex 账户重置倒计时，追踪 Tibo 重置预告与确认，并设置去重提醒。",
+  "skills": "./skills/",
+  "requires_local_executor": true,
+  "interface": {
+    "displayName": "Codex 重置提醒",
+    "shortDescription": "账户倒计时与 Tibo 重置动态",
+    "longDescription": "通过 Codex 内置账户状态读取常规重置时间，通过社区公开接口追踪 Tibo 消息。使用当前聊天的定时检查发送提醒。",
+    "category": "Productivity",
+    "defaultPrompt": [
+      "查看我的额度还有多久重置，以及 Tibo 的最新重置消息",
+      "开启账户和 Tibo 重置提醒"
+    ]
+  }
+}
