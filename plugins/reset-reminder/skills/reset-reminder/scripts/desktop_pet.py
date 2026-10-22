@@ -153,7 +153,7 @@ class Companion:
         self.canvas = tk.Canvas(self.root, width=self.WIDTH, height=self.HEIGHT,
                                 bg=BG if windowed else TRANSPARENT, highlightthickness=0)
         self.canvas.pack()
-        self.tibo_button = tk.Button(self.canvas,text='tibo restar',command=self.open_tibo,
+        self.tibo_button = tk.Button(self.canvas,text='tibo reset',command=self.open_tibo,
             font=('Microsoft YaHei UI',-12),fg='#ffffff',bg=SURFACE,
             activeforeground='#ffffff',activebackground='#365469',
             relief='flat',borderwidth=0,highlightthickness=0,cursor='hand2',takefocus=True)

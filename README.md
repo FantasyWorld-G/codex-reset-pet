@@ -41,7 +41,7 @@ $f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBa
 | 松开拖拽 | 开心弹跳，再回到待机 |
 | 10 秒无互动 | 直接进入并持续保持睡眠，头顶循环冒出由小变大的 zzz |
 | 睡眠时点击或拖动 | 唤醒并响应操作；按住期间不会入睡 |
-| 点击 `tibo restar` | 默认浏览器打开 [Tibo 页面](https://codex-reset.com/zh/tibo) |
+| 点击 `tibo reset` | 默认浏览器打开 [Tibo 页面](https://codex-reset.com/zh/tibo) |
 | 点击气泡的 × | 只收起气泡 |
 | 右键人物 → 退出桌面小精灵 | 退出程序 |
 
