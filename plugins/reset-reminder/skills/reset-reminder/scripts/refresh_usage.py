@@ -112,7 +112,7 @@ def fetch_snapshot(cancel=None, timeout=30, executable=None):
 
     try:
         request(1,'initialize',{'clientInfo':{'name':'codex_reset_pet',
-            'title':'Codex Reset Pet','version':'0.4.2'}})
+            'title':'Codex Reset Pet','version':'0.4.3'}})
         send({'method':'initialized','params':{}})
         account_response = request(2,'account/read',{'refreshToken':False})
         account = account_response.get('account') if isinstance(account_response,dict) else None

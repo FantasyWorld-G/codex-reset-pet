@@ -13,17 +13,31 @@ This is an independent local desktop application and Codex skill plugin, not an 
 
 ## One-command installation
 
-Paste this line into **PowerShell** to install the pinned **v0.4.2** release:
+Paste this line into **PowerShell** to install the pinned **v0.4.3** release:
 
-The features below describe the `main` branch. The v0.4.2 package does not include the remaining-quota progress bar or manual refresh button added afterward. To get the latest features, use the source installation instructions below.
+**v0.4.3 includes the remaining-quota percentage and progress bar, Refresh button, countdown color fixes, and failure-handling fixes.** The older v0.4.2 package does not include these additions. Existing users should use the update command below.
 
 ```powershell
-$f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.2/install.ps1' -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f
+$f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.3/install.ps1' -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f
 ```
 
 The installer downloads the release package and verifies its SHA-256 checksum. It checks for Python, installs Python 3.12 for the current user through winget if needed, installs Pillow in an isolated virtual environment, creates a desktop shortcut, and launches the pet. If it finds the Codex CLI, it also installs the companion plugin. Git is not required, and administrator privileges are normally unnecessary. Installation requires access to GitHub and PyPI, plus the winget package source if Python needs to be installed.
 
-The default installation directory is `%LOCALAPPDATA%\CodexResetPet`. Installation does not create scheduled checks, enable Windows startup, or read your login credentials. You can inspect the [installer](install.ps1) or download the package manually from [Releases](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.2).
+The default installation directory is `%LOCALAPPDATA%\CodexResetPet`. Installation does not create scheduled checks, enable Windows startup, or read your login credentials. You can inspect the [installer](install.ps1) or download the package manually from [Releases](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.3).
+
+## One-command update (existing installations)
+
+First right-click the pet and choose `退出桌面小精灵` (Exit), then run this in **PowerShell**:
+
+```powershell
+$f = Join-Path $env:TEMP 'codex-reset-pet-update.ps1'; Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/main/update.ps1' -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f
+```
+
+The updater finds the latest stable GitHub release and downloads its installer. The installer verifies the package SHA-256, updates the application, plugin, and shortcut, then launches the new version. Account snapshots, window position, and settings in `data/` are preserved. No scheduled task is created. If updating fails, resolve the reported error and retry.
+
+For a custom installation, append `-InstallRoot 'D:\Apps\CodexResetPet'` to the final command, using the original installation directory. Add `-SkipPlugin` for a desktop-only installation or `-NoLaunch` to postpone launch. Users running directly from a source checkout should update their source or install with `install.ps1 -SourcePath .`; this updater targets installer-managed directories.
+
+After updating, expand the bubble to see the remaining quota and Refresh button. Open a new Codex chat to load the updated companion plugin.
 
 ## First-time setup
 
@@ -31,7 +45,7 @@ After installation, open a **new Codex chat** and send:
 
 > Use the reset-reminder plugin to synchronize my account quota reset and reset-credit expiration information to the installed desktop pet. Synchronize once only; do not create a scheduled task.
 
-Until the first synchronization, the window shows “等待账户同步” (waiting for account synchronization). The package does not contain the publisher's account information. The latest source version also offers a Refresh button that obtains quota and reset times through your signed-in Codex CLI. Reset-credit expiration details still require a full account synchronization.
+Until the first synchronization, the window shows “等待账户同步” (waiting for account synchronization). The package does not contain the publisher's account information. v0.4.3 also offers a Refresh button that obtains quota and reset times through your signed-in Codex CLI. Reset-credit expiration details still require a full account synchronization.
 
 To enable automatic synchronization, explicitly ask Codex:
 
@@ -70,7 +84,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath .
 To install only the Codex query plugin, without the desktop application:
 
 ```powershell
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.2
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.3
 codex plugin add reset-reminder@codex-reset-pet
 ```
 
@@ -92,4 +106,4 @@ python -m unittest discover -s plugins/reset-reminder/tests -v
 python scripts/build_release.py
 ```
 
-The 51 tests cover animation state transitions, countdowns, reset-credit filtering, notification deduplication, connection failures and recovery, timeouts, cancellation, malformed responses, save failures, and native Windows UI regression. Native-window integration tests are skipped on non-Windows systems. See the [failure-handling test report (Chinese)](docs/异常处理测试.md). The release package and checksum file are written to `dist/`. Packaging uses an explicit file allowlist to exclude runtime data and caches.
+The 55 tests cover animation state transitions, countdowns, reset-credit filtering, notification deduplication, connection failures and recovery, timeouts, cancellation, malformed responses, save failures, and native Windows UI regression. Native-window integration tests are skipped on non-Windows systems. See the [failure-handling test report (Chinese)](docs/异常处理测试.md). The release package and checksum file are written to `dist/`. Packaging uses an explicit file allowlist to exclude runtime data and caches.

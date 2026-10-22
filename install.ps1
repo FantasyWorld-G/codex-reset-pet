@@ -7,7 +7,7 @@ param(
     [switch]$SkipPlugin
 )
 $ErrorActionPreference = 'Stop'
-$Version = '0.4.2'
+$Version = '0.4.3'
 $Repository = 'FantasyWorld-G/codex-reset-pet'
 $InstallRoot = [IO.Path]::GetFullPath($InstallRoot)
 $appRoot = Join-Path $InstallRoot ('app/'+$Version)

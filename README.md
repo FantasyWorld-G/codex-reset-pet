@@ -13,17 +13,31 @@ Windows 桌面常驻小精灵，显示 **Codex 账户额度重置** 与 **重置
 
 ## 一键安装
 
-在 **PowerShell** 中复制运行下面这一行（固定安装 v0.4.2）：
+在 **PowerShell** 中复制运行下面这一行（固定安装 v0.4.3）：
 
-下文功能以 `main` 分支源码为准；v0.4.2 安装包不包含后续新增的剩余额度进度条和手动刷新按钮。需要最新功能时，请使用下方的源码安装方式。
+**v0.4.3 已包含剩余额度百分比、进度条、刷新按钮、倒计时颜色修复及异常处理修复。** 旧 v0.4.2 安装包没有这些后续功能；已安装用户请执行下方更新命令。
 
 ```powershell
-$f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.2/install.ps1' -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f
+$f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.3/install.ps1' -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f
 ```
 
 安装脚本会下载发布包并核对 SHA-256，检测 Python，必要时通过 winget 安装当前用户的 Python 3.12，在独立虚拟环境安装 Pillow，创建桌面快捷方式，然后启动小精灵。检测到 Codex CLI 时，也会安装配套插件。无需 Git；通常无需管理员权限。首次运行需要连接 GitHub、PyPI；缺少 Python 时还需要 winget 软件源。
 
-安装位置：`%LOCALAPPDATA%\CodexResetPet`。不会自动建立定时任务或开机自启，也不会读取你的登录凭证。可先查看 [安装脚本](install.ps1)，或从 [Release](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.2) 手动下载。
+安装位置：`%LOCALAPPDATA%\CodexResetPet`。不会自动建立定时任务或开机自启，也不会读取你的登录凭证。可先查看 [安装脚本](install.ps1)，或从 [Release](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.3) 手动下载。
+
+## 一键更新（已安装用户）
+
+先右键人物，选择“退出桌面小精灵”，再在 **PowerShell** 运行：
+
+```powershell
+$f = Join-Path $env:TEMP 'codex-reset-pet-update.ps1'; Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/main/update.ps1' -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f
+```
+
+更新器会查询 GitHub 最新稳定版，下载对应版本的安装器；安装器校验发布包 SHA-256，更新程序、插件及快捷方式，最后启动新版。保留 `data/` 中的账户快照、窗口位置和设置，不创建定时任务。更新失败时按提示处理后重试。
+
+自定义安装目录的用户，在最后的命令末尾添加 `-InstallRoot 'D:\Apps\CodexResetPet'`，路径必须和原安装位置一致。仅安装桌面程序时可加 `-SkipPlugin`；暂不启动可加 `-NoLaunch`。从源码目录直接运行的用户，应更新源码，或用 `install.ps1 -SourcePath .` 安装；本更新器面向安装器管理的目录。
+
+更新后展开气泡，应能看到“剩余额度”和“刷新”按钮。旧聊天可能仍使用插件缓存，插件更新后请开启新聊天。
 
 ## 第一次使用
 
@@ -31,7 +45,7 @@ $f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBa
 
 > 使用 reset-reminder 插件，把我的账户额度重置和重置卡到期信息同步到已安装的桌面小精灵，只同步一次，不创建定时任务。
 
-首次同步之前，窗口显示“等待账户同步”，不会带入发布者的账户信息。最新源码版也可点击“刷新”，通过已登录的 Codex CLI 获取额度和重置时间；重置卡到期明细仍需完整账户同步。
+首次同步之前，窗口显示“等待账户同步”，不会带入发布者的账户信息。v0.4.3 也可点击“刷新”，通过已登录的 Codex CLI 获取额度和重置时间；重置卡到期明细仍需完整账户同步。
 
 想自动同步时，再单独告诉 Codex：
 
@@ -70,7 +84,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath .
 仅安装 Codex 查询插件，不安装桌面程序：
 
 ```powershell
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.2
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.3
 codex plugin add reset-reminder@codex-reset-pet
 ```
 
@@ -92,4 +106,4 @@ python -m unittest discover -s plugins/reset-reminder/tests -v
 python scripts/build_release.py
 ```
 
-51 项测试覆盖状态机、倒计时、重置卡筛选、消息去重、断网重连、超时取消、异常响应、保存失败和 Windows 原生窗口回归。非 Windows 环境会跳过原生窗口集成测试。详见 [异常处理测试记录](docs/异常处理测试.md)。发布包和校验文件生成在 `dist/`，构建使用明确的文件列表，排除运行数据和缓存。
+55 项测试覆盖状态机、倒计时、重置卡筛选、消息去重、断网重连、超时取消、异常响应、保存失败和 Windows 原生窗口回归。非 Windows 环境会跳过原生窗口集成测试。详见 [异常处理测试记录](docs/异常处理测试.md)。发布包和校验文件生成在 `dist/`，构建使用明确的文件列表，排除运行数据和缓存。
