@@ -1,5 +1,8 @@
 # Codex Reset Pet · 桌面重置小精灵
 
+[![简体中文](https://img.shields.io/badge/%E8%AF%AD%E8%A8%80-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-0969da?style=for-the-badge)](README.md)
+[![English](https://img.shields.io/badge/Language-English-6e7781?style=for-the-badge)](README.en.md)
+
 由于本人经常忘记重置的节点，导致很多重置都浪费了。然后搞了一个这个桌面插件。内置了tibo reset按钮(https://codex-reset.com/zh/tibo)，点击打开即可。
 
 Windows 桌面常驻小精灵，显示 **Codex 账户额度重置** 与 **重置卡到期** 的北京时间、剩余时长，并提供 Tibo 消息查询插件。
@@ -11,6 +14,8 @@ Windows 桌面常驻小精灵，显示 **Codex 账户额度重置** 与 **重置
 ## 一键安装
 
 在 **PowerShell** 中复制运行下面这一行（固定安装 v0.4.2）：
+
+下文功能以 `main` 分支源码为准；v0.4.2 安装包不包含后续新增的剩余额度进度条。需要最新功能时，请使用下方的源码安装方式。
 
 ```powershell
 $f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.2/install.ps1' -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f
