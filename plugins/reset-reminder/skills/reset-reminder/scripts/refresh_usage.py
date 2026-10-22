@@ -69,6 +69,10 @@ def fetch_snapshot(cancel=None, timeout=30, executable=None):
                         messages.put(message)
                 except ValueError:
                     continue
+        except (OSError, UnicodeError):
+            # Treat a broken pipe/encoding as a disconnected server. The reader
+            # must not leave an unhandled thread exception in pythonw.
+            pass
         finally:
             messages.put(None)
 

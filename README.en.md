@@ -92,4 +92,4 @@ python -m unittest discover -s plugins/reset-reminder/tests -v
 python scripts/build_release.py
 ```
 
-The 40 tests cover animation state transitions, countdowns, reset-credit filtering, notification deduplication, and native Windows drag regression. Native-window integration tests are skipped on non-Windows systems. The release package and checksum file are written to `dist/`. Packaging uses an explicit file allowlist to exclude runtime data and caches.
+The 51 tests cover animation state transitions, countdowns, reset-credit filtering, notification deduplication, connection failures and recovery, timeouts, cancellation, malformed responses, save failures, and native Windows UI regression. Native-window integration tests are skipped on non-Windows systems. See the [failure-handling test report (Chinese)](docs/异常处理测试.md). The release package and checksum file are written to `dist/`. Packaging uses an explicit file allowlist to exclude runtime data and caches.

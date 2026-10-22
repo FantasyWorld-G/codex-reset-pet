@@ -92,4 +92,4 @@ python -m unittest discover -s plugins/reset-reminder/tests -v
 python scripts/build_release.py
 ```
 
-40 项测试覆盖状态机、倒计时、重置卡筛选、消息去重和 Windows 原生拖拽回归。非 Windows 环境会跳过原生窗口集成测试。发布包和校验文件生成在 `dist/`，构建使用明确的文件列表，排除运行数据和缓存。
+51 项测试覆盖状态机、倒计时、重置卡筛选、消息去重、断网重连、超时取消、异常响应、保存失败和 Windows 原生窗口回归。非 Windows 环境会跳过原生窗口集成测试。详见 [异常处理测试记录](docs/异常处理测试.md)。发布包和校验文件生成在 `dist/`，构建使用明确的文件列表，排除运行数据和缓存。

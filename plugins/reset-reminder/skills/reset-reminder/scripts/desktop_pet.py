@@ -172,6 +172,7 @@ class Companion:
         self.manual_envelope = None
         self.refresh_results = queue.Queue()
         self.refresh_cancel = threading.Event()
+        self.refresh_thread = None
         self.refresh_busy = False
         self.refresh_message = ''
         self.refresh_message_until = 0
@@ -390,7 +391,10 @@ class Companion:
                 self.refresh_results.put((False, '刷新失败，请重试'))
 
         # Background I/O never calls Tk or the native sprite window.
-        threading.Thread(target=worker,daemon=True).start()
+        # Keep Python alive briefly after the window closes so cancellation can
+        # reach fetch_snapshot's finally and reap the account-server process.
+        self.refresh_thread = threading.Thread(target=worker,daemon=False)
+        self.refresh_thread.start()
 
     def collect_refresh(self):
         try:
