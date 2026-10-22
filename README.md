@@ -8,15 +8,15 @@ Windows 桌面常驻小精灵，显示 **Codex 账户额度重置** 与 **重置
 
 ## 一键安装
 
-在 **PowerShell** 中复制运行下面这一行（固定安装 v0.4.1）：
+在 **PowerShell** 中复制运行下面这一行（固定安装 v0.4.2）：
 
 ```powershell
-$f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.1/install.ps1' -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f
+$f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.2/install.ps1' -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f
 ```
 
 安装脚本会下载发布包并核对 SHA-256，检测 Python，必要时通过 winget 安装当前用户的 Python 3.12，在独立虚拟环境安装 Pillow，创建桌面快捷方式，然后启动小精灵。检测到 Codex CLI 时，也会安装配套插件。无需 Git；通常无需管理员权限。首次运行需要连接 GitHub、PyPI；缺少 Python 时还需要 winget 软件源。
 
-安装位置：`%LOCALAPPDATA%\CodexResetPet`。不会自动建立定时任务或开机自启，也不会读取你的登录凭证。可先查看 [安装脚本](install.ps1)，或从 [Release](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.1) 手动下载。
+安装位置：`%LOCALAPPDATA%\CodexResetPet`。不会自动建立定时任务或开机自启，也不会读取你的登录凭证。可先查看 [安装脚本](install.ps1)，或从 [Release](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.2) 手动下载。
 
 ## 第一次使用
 
@@ -58,7 +58,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath .
 仅安装 Codex 查询插件，不安装桌面程序：
 
 ```powershell
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.1
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.2
 codex plugin add reset-reminder@codex-reset-pet
 ```
 

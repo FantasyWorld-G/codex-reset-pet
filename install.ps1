@@ -7,7 +7,7 @@ param(
     [switch]$SkipPlugin
 )
 $ErrorActionPreference = 'Stop'
-$Version = '0.4.1'
+$Version = '0.4.2'
 $Repository = 'FantasyWorld-G/codex-reset-pet'
 $InstallRoot = [IO.Path]::GetFullPath($InstallRoot)
 $appRoot = Join-Path $InstallRoot ('app/'+$Version)
@@ -41,9 +41,14 @@ try {
         $checksumLine = @(Get-Content -LiteralPath $checksumPath | Where-Object { $_ -match ('^[0-9a-fA-F]{64}\s+'+[regex]::Escape($archiveName)+'$') })
         if ($checksumLine.Count -ne 1) { throw 'Release checksum is missing or ambiguous.' }
         $expected = ($checksumLine[0] -split '\s+')[0]
-        if ((Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash -ne $expected) { throw 'Download checksum mismatch.' }
+        $hasher = [Security.Cryptography.SHA256]::Create()
+        $archiveStream = [IO.File]::OpenRead($archivePath)
+        try { $actual = ([BitConverter]::ToString($hasher.ComputeHash($archiveStream))).Replace('-','') }
+        finally { $archiveStream.Dispose(); $hasher.Dispose() }
+        if ($actual -ne $expected) { throw 'Download checksum mismatch.' }
         $unpackRoot = Join-Path $temporaryRoot 'unpacked'
-        Expand-Archive -LiteralPath $archivePath -DestinationPath $unpackRoot
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [IO.Compression.ZipFile]::ExtractToDirectory($archivePath,$unpackRoot)
         $SourcePath = Join-Path $unpackRoot 'codex-reset-pet'
     }
     $SourcePath = (Resolve-Path -LiteralPath $SourcePath).Path
