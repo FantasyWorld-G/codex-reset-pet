@@ -89,11 +89,13 @@ def view_model(envelope, now):
         rows.append({'title': title, 'deadline': deadline, 'seconds': seconds,
                      'date': datetime.fromtimestamp(deadline, CN).strftime('%m/%d  %H:%M') if deadline is not None else empty,
                      'remaining': remaining(seconds, '已到预计时间 · 等待确认'),
-                     'detail': detail, 'color': time_color(seconds) if not stale else MUTED})
+                     # Deadline urgency is independent of snapshot freshness.
+                     # Freshness remains explicit in the footer and quota label.
+                     'detail': detail, 'color': time_color(seconds)})
     deadlines = [r['seconds'] for r in rows if r['seconds'] is not None]
     return {'rows': rows, 'stale': stale, 'captured': captured,
             'remaining_percent': quota['remaining_percent'] if quota else None,
-            'pet_color': time_color(min(deadlines)) if deadlines and not stale else MUTED,
+            'pet_color': time_color(min(deadlines)) if deadlines else MUTED,
             'footer': ('数据待同步 · 显示上次记录' if stale else '已同步 ' + datetime.fromtimestamp(captured, CN).strftime('%H:%M') + ' · 本机倒计时')}
 
 
@@ -119,9 +121,9 @@ def display_model(envelope, manual, now):
     if not isinstance(credits, dict) or not isinstance(credits.get('credits'), list):
         row = dict((original or unavailable())['rows'][1])
         row['title'] = '重置卡到期 · 上次记录' if original else '重置卡到期 · 待完整同步'
-        row['color'] = MUTED
         refreshed['rows'][1] = row
-        refreshed['pet_color'] = refreshed['rows'][0]['color']
+        deadlines = [r['seconds'] for r in refreshed['rows'] if r.get('seconds') is not None]
+        refreshed['pet_color'] = time_color(min(deadlines)) if deadlines else MUTED
     refreshed['footer'] = ('额度待刷新' if refreshed['stale'] else '额度已同步 ' +
                            datetime.fromtimestamp(refreshed['captured'], CN).strftime('%H:%M'))
     return refreshed
@@ -311,7 +313,7 @@ class Companion:
                 dot = c.create_oval(32,y+14,38,y+20,fill=row['color'],outline='')
                 title = self.text(46,y+9,row['title'],12, MUTED)
                 date = self.text(32,y+29,row['date'],25,row['color'],True)
-                left = self.text(32,y+65,row['remaining'],12,TEXT)
+                left = self.text(32,y+65,row['remaining'],12,row['color'])
                 self.row_items.append((dot,date,left,title))
             self.quota_text = self.text(32,147,'',12,TEXT,bold=True,tags='quota')
             c.create_rectangle(32,173,338,179,fill=BG,outline='',tags='quota')
@@ -351,7 +353,7 @@ class Companion:
         for row, (dot,date,left,title) in zip(self.model['rows'], self.row_items):
             self.canvas.itemconfigure(dot,fill=row['color'])
             self.canvas.itemconfigure(date,text=row['date'],fill=row['color'])
-            self.canvas.itemconfigure(left,text=row['remaining'])
+            self.canvas.itemconfigure(left,text=row['remaining'],fill=row['color'])
             self.canvas.itemconfigure(title,text=row['title'])
         if self.expanded:
             self.update_quota()

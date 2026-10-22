@@ -53,7 +53,7 @@ You can later say, “Turn off the reset reminder's scheduled task.” Automatic
 | Click × in the information bubble | Collapse the bubble without quitting |
 | Right-click the pet → `退出桌面小精灵` | Quit the application |
 
-The two deadline labels change color independently as their deadlines approach. The character retains its original colors. Animation states switch directly without inserting unrelated expressions. Animation targets 60Hz; actual performance depends on system load. Account snapshots older than 90 minutes are marked “数据待同步” (synchronization needed), rather than presented as current data.
+Dates and remaining-time labels change color independently as their deadlines approach. The character retains its original colors. Animation states switch directly without inserting unrelated expressions. Animation targets 60Hz; actual performance depends on system load. Account snapshots older than 90 minutes are marked as needing synchronization. Time colors continue to reflect the recorded deadlines; they indicate urgency, not freshly verified account data.
 
 The account card also displays the remaining quota percentage and a progress bar, calculated as `100 - usedPercent` from Codex's account status. It updates when the account snapshot is refreshed. Missing data is shown as `--`; stale data is labeled “上次同步” (last synchronized value). The window rereads local data every 5 seconds and recalculates countdowns every 0.5 seconds; neither operation requests account data. Click Refresh to call Codex’s read-only `account/rateLimits/read` endpoint. This does not enable scheduled tasks or start a model turn. Duplicate clicks are disabled while refreshing; failures show a message and retain the last data.
 

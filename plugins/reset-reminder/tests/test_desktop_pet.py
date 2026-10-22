@@ -65,11 +65,14 @@ class DesktopTests(unittest.TestCase):
             self.assertTrue(all(abs(int(a[i:i+2],16)-int(b[i:i+2],16))<=1 for i in [1,3,5]))
         self.assertEqual(pet.time_color(-10),pet.time_color(0))
 
-    def test_stale_data_is_labelled_and_muted(self):
+    def test_stale_data_is_labelled_without_losing_deadline_colors(self):
         model = pet.view_model(snapshot(), NOW+5401)
         self.assertTrue(model['stale'])
         self.assertIn('上次记录', model['footer'])
-        self.assertEqual(model['pet_color'],pet.MUTED)
+        self.assertEqual(model['pet_color'],pet.time_color(1799))
+        for row in model['rows']:
+            self.assertEqual(row['color'],pet.time_color(row['seconds']))
+            self.assertNotEqual(row['color'],pet.MUTED)
 
     def test_expired_card_removed_and_used_card_removed(self):
         raw = snapshot()

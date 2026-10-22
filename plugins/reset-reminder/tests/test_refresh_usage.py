@@ -26,7 +26,12 @@ class RefreshTests(unittest.TestCase):
         self.assertEqual(model['remaining_percent'],60)
         self.assertEqual(model['rows'][1]['deadline'],NOW+7200)
         self.assertIn('上次记录',model['rows'][1]['title'])
-        self.assertEqual(model['rows'][1]['color'],pet.MUTED)
+        self.assertEqual(model['rows'][1]['color'],pet.time_color(7140))
+        later = pet.display_model(snapshot(),self.manual(),NOW+6000)
+        self.assertTrue(later['stale'])
+        self.assertIn('上次记录',later['rows'][1]['title'])
+        self.assertEqual(later['rows'][1]['color'],pet.time_color(1200))
+        self.assertNotEqual(model['rows'][1]['color'],later['rows'][1]['color'])
 
     def test_newer_full_sync_takes_priority(self):
         model = pet.display_model(self.manual(),snapshot(),NOW+60)
@@ -37,6 +42,7 @@ class RefreshTests(unittest.TestCase):
         model = pet.display_model(None,self.manual(),NOW+60)
         self.assertEqual(model['remaining_percent'],60)
         self.assertIn('待完整同步',model['rows'][1]['title'])
+        self.assertEqual(model['rows'][1]['color'],pet.MUTED)
 
     def test_invalid_cache_falls_back_to_full_snapshot(self):
         self.assertEqual(pet.display_model(snapshot(),{'usage':{}},NOW)['remaining_percent'],75)
