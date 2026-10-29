@@ -48,7 +48,7 @@ account_due 只表示已到预计时间，不代表到账；account_window_chang
 
 Windows WndProc 只能排队输入，不得从原生回调调用任何Tk方法（包括after）。由Tk主循环消费，避免重入引发致命线程错误。关闭释放捕获和人物层。诊断日志为 DATA/desktop-events.log 和 DATA/desktop-crash.log；公开反馈时排除账户快照和凭证。
 
-## 可选临期自动用卡（未发布源码）
+## 可选临期自动用卡（v0.4.4 起支持）
 
 日常查询和提醒仍不兑换。用户明确要求桌面精灵自动用卡时，可启用独立的临期功能；有歧义的执行窗口须先确定。默认关闭，不将安装、查询或普通提醒当作自动兑换授权。右键菜单提供提前 16–6 分钟和最后 5 分钟两种窗口。配置在 DATA/auto-redeem.json，执行记录在 DATA/auto-redeem-state.json，不公开这些文件。
 
