@@ -152,7 +152,7 @@ To enable automatic synchronization, explicitly ask Codex:
 
 > Synchronize the desktop pet's account status every hour and check for Tibo reset updates. Notify me only when there is something actionable.
 
-You can later say, “Turn off the reset reminder's scheduled task.” Automatic checks require the computer to be awake, Codex to be running, and network access and sufficient Codex quota to be available. The pet does not independently access your account in the background.
+You can later say, “Turn off the reset reminder's scheduled task.” Automatic checks require the computer to be awake, Codex to be running, and network access and sufficient Codex quota to be available. The pet does not independently access your account in the background unless you opt into the unreleased automatic credit-redemption feature.
 
 ## Controls and display
 
@@ -165,6 +165,7 @@ You can later say, “Turn off the reset reminder's scheduled task.” Automatic
 | Click or drag while asleep | Wake the pet and respond to the interaction; it will not fall asleep while held |
 | Click `刷新` (Refresh) | Retrieve quota and reset time through the signed-in Codex CLI without blocking animation |
 | Click `tibo reset` | Open the [Tibo page](https://codex-reset.com/zh/tibo) in the default browser |
+| Click `更新预估` (unreleased source feature) | Refresh the third card's public Tibo forecast immediately |
 | Click × in the information bubble | Collapse the bubble without quitting |
 | Right-click the pet → `退出桌面小精灵` | Quit the application |
 
@@ -176,11 +177,19 @@ Manual refreshes use a separate `desktop-usage.json` cache and do not overwrite 
 
 ## Documentation and maintenance
 
+Unreleased source fixes launcher lifetime coupling: use `start.ps1` to launch through the local Windows process creation interface, so launcher job cleanup does not terminate the pet. Runtime diagnostics update every 30 seconds, and explicit closes record their reason. Check `desktop-launcher.log` in the data directory if startup fails.
+
+Unreleased source: right-click the pet → 临期重置卡自动使用 to opt into either 16–6 minutes before expiration or the last 5 minutes. It binds to the signed-in account, requires fresh details and exact credit selection, and preserves an idempotency key across retries. It is off by default. It cannot execute while the pet is closed or the computer is asleep, and missed windows are skipped.
+
+The unreleased source also includes a previous Tibo reset card with its time, confirmation status, the website announcement, website categories, and a source-post button. Categories are not official explanations. Click the announcement preview to read its details. History refreshes together with the forecast.
+
+**Unreleased source feature:** a separate Tibo forecast card fetches the website's public forecast at startup and every 5 minutes while the pet runs. It displays a structured announcement target in Beijing time with a countdown and urgency colors, or “暂无明确预告” when no explicit target exists. Probabilities are never converted to definite dates. Failed requests retain clearly labeled cached data; records older than one hour are marked stale. This does not send account data or enable Codex scheduled tasks. Website observations do not confirm a reset for your account. This feature is not included in the v0.4.3 release package.
+
 - [Complete user guide: synchronization, installer options, updates, uninstalling, and troubleshooting (Chinese)](docs/使用说明.md)
 - [Changelog (Chinese)](CHANGELOG.md)
 - [Character asset generation notes (Chinese)](plugins/reset-reminder/assets/生成说明.txt)
 
-The repository contains code, tests, and character assets. It does not contain account snapshots, credentials, logs, or personal scheduled-task settings. Community updates are classified as signals, pending verification, community-confirmed resets, or banked resets. Community confirmation does not prove that a reset has reached your account. The plugin never redeems reset credits automatically.
+The repository contains code, tests, and character assets. It does not contain account snapshots, credentials, logs, or personal scheduled-task settings. Community updates are classified as signals, pending verification, community-confirmed resets, or banked resets. Community confirmation does not prove that a reset has reached your account. The reminder plugin does not redeem credits. The unreleased desktop feature can redeem an expiring credit only after the user explicitly enables it.
 
 ## Development and testing
 
@@ -190,4 +199,4 @@ python -m unittest discover -s plugins/reset-reminder/tests -v
 python scripts/build_release.py
 ```
 
-The 55 tests cover animation state transitions, countdowns, reset-credit filtering, notification deduplication, connection failures and recovery, timeouts, cancellation, malformed responses, save failures, and native Windows UI regression. Native-window integration tests are skipped on non-Windows systems. See the [failure-handling test report (Chinese)](docs/异常处理测试.md). The release package and checksum file are written to `dist/`. Packaging uses an explicit file allowlist to exclude runtime data and caches.
+The 90 tests cover animation state transitions, countdowns, reset-credit filtering, notification deduplication, connection failures and recovery, timeouts, cancellation, malformed responses, save failures, Tibo forecast parsing, and native Windows layout and refresh regression. Native-window integration tests are skipped on non-Windows systems. See the [failure-handling test report (Chinese)](docs/异常处理测试.md). The release package and checksum file are written to `dist/`. Packaging uses an explicit file allowlist to exclude runtime data and caches.

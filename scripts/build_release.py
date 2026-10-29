@@ -13,7 +13,7 @@ for directory in ('docs','plugins','scripts'):
                  '__pycache__' not in p.parts and p.suffix not in ('.pyc','.pyo'))
 files = sorted(set(files))
 for path in files:
-    if path.name in {'usage.json','desktop-usage.json','state.json','auth.json','desktop-runtime.json','desktop-settings.json'} or path.suffix in {'.log','.tmp'}:
+    if path.name in {'usage.json','desktop-usage.json','tibo-forecast.json','auto-redeem.json','auto-redeem-state.json','state.json','auth.json','desktop-runtime.json','desktop-settings.json'} or path.suffix in {'.log','.tmp','.lock'}:
         raise ValueError(f'Runtime data cannot be published: {path.name}')
 destination = ROOT/'dist'
 destination.mkdir(exist_ok=True)

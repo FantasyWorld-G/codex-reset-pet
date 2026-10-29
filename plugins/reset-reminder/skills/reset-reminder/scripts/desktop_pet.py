@@ -15,6 +15,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 import time
 import tkinter as tk
+from tkinter import font as tkfont
 from datetime import datetime
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 from functools import lru_cache
@@ -25,6 +26,10 @@ from animation_state import AnimationStateMachine, State, animation_pose, sleep_
 
 from check_reset import CN, account_snapshot, card_snapshot, epoch, read_json, write_json
 from refresh_usage import RefreshError, fetch_snapshot, save_snapshot
+from tibo_forecast import fetch_forecast, forecast_view, source_url
+from auto_redeem import run_cycle, read_config, valid_policy, exact_credit_client, card_rows
+from refresh_usage import account_operation, make_snapshot
+from launch_desktop import in_windows_job, windows_job_flags
 
 TRANSPARENT = '#ff00ff'
 BG = '#182735'
@@ -32,7 +37,7 @@ SURFACE = '#223545'
 MUTED = '#93a8b8'
 TEXT = '#edf4f8'
 SPRITE_SIZE = 288
-PET_X, PET_Y = 275,489
+PET_X, PET_Y = 275,772
 TARGET_FPS = 60
 TIBO_URL = 'https://codex-reset.com/zh/tibo'
 
@@ -130,11 +135,15 @@ def display_model(envelope, manual, now):
 
 
 class Companion:
-    WIDTH, HEIGHT = 370, 590
+    WIDTH, HEIGHT = 370, 873
 
-    def __init__(self, usage, settings, windowed=False):
+    def __init__(self, usage, settings, windowed=False, tibo_enabled=True):
         self.usage, self.settings = Path(usage), Path(settings)
         self.closed = False
+        self.started_at = time.time()
+        self.close_reason = None
+        self.in_job = in_windows_job()
+        self.job_flags = windows_job_flags()
         self.root = tk.Tk()
         self.root.report_callback_exception = lambda kind,value,tb: logging.error(
             'Desktop UI callback failed',exc_info=(kind,value,tb))
@@ -176,6 +185,28 @@ class Companion:
         self.refresh_busy = False
         self.refresh_message = ''
         self.refresh_message_until = 0
+        self.auto_config_path=self.usage.with_name('auto-redeem.json')
+        self.auto_state_path=self.usage.with_name('auto-redeem-state.json')
+        self.auto_policy=read_config(self.auto_config_path)
+        self.auto_message='自动使用：检查中' if valid_policy(self.auto_policy) else '自动使用：关闭'
+        self.auto_results=queue.Queue()
+        self.auto_busy=False
+        self.auto_next_check=0
+        self.auto_revision=0
+        self.auto_thread=None
+        self.tibo_enabled = tibo_enabled
+        self.tibo_path = self.usage.with_name('tibo-forecast.json')
+        self.tibo_snapshot = None
+        self.tibo_results = queue.Queue()
+        self.tibo_busy = False
+        self.tibo_failed = False
+        self.tibo_next_refresh = 0
+        self.tibo_thread = None
+        try:
+            self.tibo_snapshot = read_json(self.tibo_path)
+        except (OSError,ValueError):
+            pass
+        self.tibo_model = forecast_view(None,time.time())
         self.last_read = 0
         self.model = unavailable()
         x = max(0, self.root.winfo_screenwidth()-self.WIDTH-34)
@@ -191,6 +222,8 @@ class Companion:
         self.canvas = tk.Canvas(self.root, width=self.WIDTH, height=self.HEIGHT,
                                 bg=BG if windowed else TRANSPARENT, highlightthickness=0)
         self.canvas.pack()
+        self.history_font = tkfont.Font(family='Microsoft YaHei UI',size=-12)
+        self.history_dialog = None
         self.tibo_button = tk.Button(self.canvas,text='tibo reset',command=self.open_tibo,
             font=('Microsoft YaHei UI',-12),fg='#ffffff',bg=SURFACE,
             activeforeground='#ffffff',activebackground='#365469',
@@ -199,16 +232,25 @@ class Companion:
             font=('Microsoft YaHei UI',-12),fg='#ffffff',bg='#365469',
             activeforeground='#ffffff',activebackground='#44657d',disabledforeground=MUTED,
             relief='flat',borderwidth=0,highlightthickness=0,cursor='hand2',takefocus=True)
+        self.tibo_refresh_button = tk.Button(self.canvas,text='更新预估',command=self.refresh_tibo,
+            font=('Microsoft YaHei UI',-11),fg=TEXT,bg='#365469',
+            activeforeground=TEXT,activebackground='#44657d',disabledforeground=MUTED,
+            relief='flat',borderwidth=0,highlightthickness=0,cursor='hand2',takefocus=True)
+        self.tibo_source_button = tk.Button(self.canvas,text='查看原帖',command=self.open_tibo_source,
+            font=('Microsoft YaHei UI',-11),fg=TEXT,bg='#365469',
+            activeforeground=TEXT,activebackground='#44657d',disabledforeground=MUTED,
+            relief='flat',borderwidth=0,highlightthickness=0,cursor='hand2',takefocus=True)
         self.canvas.bind('<ButtonPress-1>', self.press)
         self.canvas.bind('<B1-Motion>', self.drag)
         self.canvas.bind('<ButtonRelease-1>', self.release)
         self.canvas.bind('<Button-3>', self.menu)
         self.root.bind('<Escape>', lambda _: self.collapse())
-        self.root.protocol('WM_DELETE_WINDOW', self.close)
+        self.root.protocol('WM_DELETE_WINDOW', lambda: self.close('window_close'))
         self.tick()
         self.animate()
         self.root.after(300, self.show)
         self.root.after(5000, self.show)
+        self.root.after(30000, self.heartbeat)
 
     @property
     def interaction(self):
@@ -267,6 +309,19 @@ class Companion:
         self.root.deiconify()
         self.root.lift()
         self.root.update_idletasks()
+        self.write_runtime()
+
+    def heartbeat(self):
+        if self.closed:
+            return
+        try:
+            self.write_runtime()
+        except Exception:
+            logging.exception('Runtime heartbeat write failed')
+        finally:
+            self.root.after(30000, self.heartbeat)
+
+    def write_runtime(self):
         help_text = [{'text':self.canvas.itemcget(item,'text'),
                       'color':self.canvas.itemcget(item,'fill'),
                       'bounds':self.canvas.bbox(item)}
@@ -276,13 +331,22 @@ class Companion:
             'topmost': bool(self.root.attributes('-topmost')), 'expanded': self.expanded,
             'geometry': self.root.geometry(), 'rows': self.model['rows'],
             'remaining_percent': self.model['remaining_percent'],
-            'snapshot_stale': self.model['stale'], 'started_at': time.time(),
+            'snapshot_stale': self.model['stale'], 'started_at': self.started_at,
+            'heartbeat_at': time.time(), 'in_windows_job': self.in_job,
+            'windows_job_flags': self.job_flags,
+            'lifecycle': 'closed' if self.closed else 'running',
+            'close_reason': self.close_reason,
             'sprite_loaded': len(self.sprites), 'interaction': self.interaction,
             'sleep_after_seconds':self.animation.SLEEP_AFTER,
             'help_text':help_text, 'sprite_border':False,
             'tibo_button_visible':bool(self.tibo_button.winfo_ismapped()),
             'refresh_button_visible':bool(self.refresh_button.winfo_ismapped()),
+            'tibo_forecast':self.tibo_model,
+            'tibo_refresh_button_visible':bool(self.tibo_refresh_button.winfo_ismapped()),
+            'tibo_source_button_visible':bool(self.tibo_source_button.winfo_ismapped()),
             'tibo_url':TIBO_URL,
+            'auto_redeem_enabled':valid_policy(self.auto_policy),
+            'auto_redeem_status':self.auto_message,
             'alpha_mode':'per_pixel' if self.layered_sprite else 'tk',
             'target_fps':TARGET_FPS,
             'measured_callback_fps':round((len(self.frame_times)-1)/(self.frame_times[-1]-self.frame_times[0]),1) if len(self.frame_times)>1 else None})
@@ -303,37 +367,59 @@ class Companion:
         self.row_items = []
         self.last_frame = None
         if self.expanded:
-            self.rounded(5, 5, 360, 322, 22, BG, tags='bubble')
-            c.create_polygon(274,323,304,323,289,346, fill=BG, outline=BG, tags='bubble')
+            self.rounded(5, 5, 360, 605, 22, BG, tags='bubble')
+            c.create_polygon(274,606,304,606,289,629, fill=BG, outline=BG, tags='bubble')
             self.text(25, 21, '重置时间', 15, bold=True, tags='header')
             self.text(212, 25, '北京时间 · UTC+8', 11, MUTED)
             self.text(338, 18, '×', 21, MUTED, tags='collapse')
             for i, row in enumerate(model['rows']):
                 y = 58+i*139
-                self.rounded(20, y, 330, 131 if i == 0 else 91, 13, SURFACE)
+                self.rounded(20, y, 330, 131 if i == 0 else 96, 13, SURFACE)
                 dot = c.create_oval(32,y+14,38,y+20,fill=row['color'],outline='')
                 title = self.text(46,y+9,row['title'],12, MUTED)
                 date = self.text(32,y+29,row['date'],25,row['color'],True)
                 left = self.text(32,y+65,row['remaining'],12,row['color'])
                 self.row_items.append((dot,date,left,title))
+            self.auto_status_item=self.text(32,280,self.auto_message[:31]+('…' if len(self.auto_message)>31 else ''),9,MUTED)
             self.quota_text = self.text(32,147,'',12,TEXT,bold=True,tags='quota')
             c.create_rectangle(32,173,338,179,fill=BG,outline='',tags='quota')
             self.quota_fill = c.create_rectangle(32,173,32,179,fill='#8acdf0',outline='',tags='quota')
             self.update_quota()
             c.create_window(274,142,anchor='nw',width=64,height=26,
                             window=self.refresh_button,tags='refresh')
-            self.footer_item = self.text(25, 300, self.footer_text(),11,MUTED,width=207)
-            c.create_window(238,294,anchor='nw',width=112,height=28,
+            self.rounded(20,296,330,132,13,SURFACE)
+            self.tibo_items = (
+                self.text(32,305,'',12,MUTED),
+                self.text(32,331,'',22,TEXT,True),
+                self.text(32,362,'',12,TEXT),
+                self.text(32,385,'',11,MUTED),
+                self.text(32,407,'',10,MUTED))
+            c.create_window(264,301,anchor='nw',width=74,height=24,
+                            window=self.tibo_refresh_button,tags='tibo_refresh')
+            self.rounded(20,436,330,130,13,SURFACE)
+            self.tibo_history_items = (
+                self.text(32,445,'',12,MUTED),
+                self.text(32,470,'',22,TEXT,True),
+                self.text(32,501,'',12,TEXT,tags='history_details'),
+                self.text(32,523,'',11,MUTED),
+                self.text(32,545,'',10,MUTED))
+            c.create_window(264,441,anchor='nw',width=74,height=24,
+                            window=self.tibo_source_button,tags='tibo_source')
+            self.update_tibo_display()
+            c.tag_bind('history_details','<Enter>',lambda _:c.configure(cursor='hand2'))
+            c.tag_bind('history_details','<Leave>',lambda _:c.configure(cursor=''))
+            self.footer_item = self.text(25, 583, self.footer_text(),11,MUTED,width=207)
+            c.create_window(238,577,anchor='nw',width=112,height=28,
                             window=self.tibo_button,tags='tibo_link')
         # Opaque backplates prevent ClearType and alpha edges mixing with the
         # Windows transparency key. Static text is not deleted every frame.
         if self.expanded:
-            self.rounded(16,361,160,142,14,BG,tags='help')
-            self.text(28,374,'点击 · 表情 / 展开气泡',12,'#ffffff',tags='help')
-            self.text(28,399,'拖拽 · 提起并晃动',12,'#ffffff',tags='help')
-            self.text(28,424,'松手 · 落地弹跳',12,'#ffffff',tags='help')
-            self.text(28,450,'右键 · 玩法与退出',11,'#ffffff',tags='help')
-            self.state_text = self.text(28,480,'点击互动',11,'#ffffff',tags='help')
+            self.rounded(16,644,160,142,14,BG,tags='help')
+            self.text(28,657,'点击 · 表情 / 展开气泡',12,'#ffffff',tags='help')
+            self.text(28,682,'拖拽 · 提起并晃动',12,'#ffffff',tags='help')
+            self.text(28,707,'松手 · 落地弹跳',12,'#ffffff',tags='help')
+            self.text(28,733,'右键 · 玩法与退出',11,'#ffffff',tags='help')
+            self.state_text = self.text(28,763,'点击互动',11,'#ffffff',tags='help')
         else:
             self.state_text = None
         self.sprite_item = None if self.layered_sprite else c.create_image(PET_X,PET_Y,image=self.rendered_sprite(0,0),tags='pet')
@@ -358,7 +444,131 @@ class Companion:
             self.canvas.itemconfigure(title,text=row['title'])
         if self.expanded:
             self.update_quota()
+            self.canvas.itemconfigure(self.auto_status_item,text=self.auto_message[:31]+('…' if len(self.auto_message)>31 else ''))
+            self.update_tibo_display()
             self.canvas.itemconfigure(self.footer_item,text=self.footer_text())
+
+    def update_tibo_display(self):
+        model = self.tibo_model
+        color = time_color(model['seconds'])
+        for item,key in zip(self.tibo_items,('title','date','remaining','detail','status')):
+            label = '正在读取网站预估…' if key=='status' and self.tibo_busy else model[key]
+            self.canvas.itemconfigure(item,text=label,fill=color if key in ('date','remaining') else MUTED)
+        for item,key in zip(self.tibo_history_items,('last_title','last_date','last_reason','last_category','last_status')):
+            label=model[key]
+            if key=='last_reason':
+                suffix='（详情）'
+                if self.history_font.measure(label+suffix)>306:
+                    lo,hi=0,len(label)
+                    while lo<hi:
+                        mid=(lo+hi+1)//2
+                        if self.history_font.measure(label[:mid]+'…'+suffix)<=306:lo=mid
+                        else:hi=mid-1
+                    label=label[:lo]+'…'
+                label+=suffix
+            self.canvas.itemconfigure(item,text=label)
+        self.tibo_source_button.configure(state='normal' if model['last_url'] else 'disabled')
+
+    def refresh_tibo(self):
+        if self.closed or self.tibo_busy or not self.tibo_enabled:
+            return
+        self.tibo_busy = True
+        self.tibo_refresh_button.configure(text='读取中',state='disabled')
+        def worker():
+            try:
+                snapshot = fetch_forecast(cancel=self.refresh_cancel)
+                if self.refresh_cancel.is_set():
+                    return
+                save_snapshot(self.tibo_path,snapshot)
+                self.tibo_results.put(snapshot)
+            except Exception:
+                self.tibo_results.put(None)
+        self.tibo_thread = threading.Thread(target=worker,daemon=False)
+        self.tibo_thread.start()
+
+    def disable_auto(self):
+        self.auto_revision+=1
+        policy=dict(self.auto_policy,enabled=False)
+        try:save_snapshot(self.auto_config_path,policy)
+        except OSError:
+            self.auto_message='自动使用：关闭失败，请退出精灵'
+            return
+        self.auto_policy=policy
+        self.auto_message='自动使用：关闭'
+
+    def enable_auto(self,start,stop):
+        if self.auto_busy:return
+        self.auto_revision+=1
+        revision=self.auto_revision
+        self.auto_busy=True
+        self.auto_message='自动使用：核对账户和接口…'
+        def enroll():
+            try:
+                client=exact_credit_client()
+                def inspect(account,limits,request):
+                    if not account.get('email'):raise RefreshError('无法核对账户')
+                    card_rows(limits)
+                    snapshot=make_snapshot(account,limits)
+                    return {'enabled':True,'start_before':start,'stop_before':stop,
+                            'account_id':snapshot['usage']['accountId']}
+                policy=account_operation(inspect,cancel=self.refresh_cancel,executable=client)
+                self.auto_results.put((revision,{'policy':policy}))
+            except Exception as error:
+                self.auto_results.put((revision,{'message':'自动使用：'+str(error),'delay':60}))
+        self.auto_thread=threading.Thread(target=enroll,daemon=False)
+        self.auto_thread.start()
+
+    def tick_auto(self):
+        try:revision,result=self.auto_results.get_nowait()
+        except queue.Empty:pass
+        else:
+            self.auto_busy=False
+            if revision==self.auto_revision:
+                if 'policy' in result:
+                    try:
+                        save_snapshot(self.auto_config_path,result['policy'])
+                        self.auto_policy=result['policy']
+                        self.auto_message='自动使用：已开启，仅限临期卡'
+                        self.auto_next_check=0
+                    except OSError:self.auto_message='自动使用：设置保存失败，未开启'
+                else:
+                    self.auto_message=result['message']
+                    self.auto_next_check=time.time()+result.get('delay',60)
+                    if result.get('snapshot'):
+                        self.manual_envelope=result['snapshot']
+                        self.last_read=0
+                    if result.get('outcome'):
+                        logging.info('Auto redeem result: %s',result['outcome'])
+        if self.closed or self.auto_busy or not valid_policy(self.auto_policy) or time.time()<self.auto_next_check:return
+        self.auto_busy=True
+        revision=self.auto_revision
+        def worker():
+            try:
+                result=run_cycle(self.auto_config_path,self.auto_state_path,self.manual_usage,self.refresh_cancel)
+            except Exception as error:
+                result={'message':'自动使用：'+str(error),'delay':30}
+            self.auto_results.put((revision,result))
+        self.auto_thread=threading.Thread(target=worker,daemon=False)
+        self.auto_thread.start()
+
+    def tick_tibo(self,now):
+        try:
+            snapshot = self.tibo_results.get_nowait()
+        except queue.Empty:
+            pass
+        else:
+            self.tibo_busy = False
+            self.tibo_failed = snapshot is None
+            if snapshot is not None:
+                self.tibo_snapshot = snapshot
+            self.tibo_next_refresh = time.monotonic()+300
+            self.tibo_refresh_button.configure(text='更新预估',state='normal')
+        try:
+            self.tibo_model = forecast_view(self.tibo_snapshot,now,self.tibo_failed)
+        except (ValueError,TypeError,KeyError,OverflowError,OSError):
+            self.tibo_model = forecast_view(None,now,True)
+        if self.tibo_enabled and not self.tibo_busy and time.monotonic()>=self.tibo_next_refresh:
+            self.refresh_tibo()
 
     def footer_text(self):
         if self.refresh_busy:
@@ -419,6 +629,49 @@ class Companion:
         except OSError:
             logging.exception('Failed to open Tibo page')
 
+    def open_tibo_source(self,url=None):
+        url=source_url(self.tibo_model.get('last_url') if url is None else url)
+        if not url:return
+        self.animation.touch(time.monotonic())
+        try:
+            if not webbrowser.open(url,new=2):
+                logging.error('Default browser could not open the reset source')
+        except OSError:
+            logging.exception('Failed to open reset source')
+
+    def show_history_details(self):
+        self.animation.touch(time.monotonic())
+        if self.history_dialog is not None and self.history_dialog.winfo_exists():
+            self.history_dialog.lift()
+            return
+        model=dict(self.tibo_model)
+        dialog=self.history_dialog=tk.Toplevel(self.root)
+        dialog.title('上次 Tibo 重置 · 网站说明')
+        dialog.configure(bg=BG)
+        dialog.attributes('-topmost',True)
+        dialog.geometry('480x340')
+        dialog.minsize(360,260)
+        tk.Label(dialog,text=model['last_date']+' · 北京时间',bg=BG,fg=TEXT,
+                 font=('Microsoft YaHei UI',12,'bold')).pack(anchor='w',padx=16,pady=12)
+        frame=tk.Frame(dialog,bg=BG)
+        frame.pack(fill='both',expand=True,padx=16)
+        scrollbar=tk.Scrollbar(frame)
+        scrollbar.pack(side='right',fill='y')
+        content=tk.Text(frame,wrap='word',bg=SURFACE,fg=TEXT,relief='flat',
+                        font=('Microsoft YaHei UI',11),padx=10,pady=10,
+                        yscrollcommand=scrollbar.set)
+        content.pack(fill='both',expand=True)
+        scrollbar.configure(command=content.yview)
+        explanation=model.get('last_announcement') or '网站暂未提供这次重置的公告说明。'
+        content.insert('1.0',model['last_status']+'\n'+model['last_category']+
+                       '\n\n网站公告说明：\n'+explanation+
+                       '\n\n来源：codex-reset.com 时间线。公告内容不一定说明因果；网站分类不等于官方重置原因。')
+        content.configure(state='disabled')
+        tk.Button(dialog,text='查看原帖',command=lambda:self.open_tibo_source(model['last_url']),
+                  state='normal' if model['last_url'] else 'disabled').pack(side='left',padx=16,pady=12)
+        tk.Button(dialog,text='关闭',command=dialog.destroy).pack(side='right',padx=16,pady=12)
+        dialog.bind('<Escape>',lambda _:dialog.destroy())
+
     def animate(self):
         if self.closed:
             return
@@ -472,6 +725,8 @@ class Companion:
             except (OSError, ValueError):
                 self.manual_envelope = None
         self.model = display_model(self.envelope, self.manual_envelope, now)
+        self.tick_tibo(now)
+        self.tick_auto()
         if not hasattr(self,'sprite_item'):
             self.draw()
         else:
@@ -483,6 +738,9 @@ class Companion:
         tags = self.canvas.gettags('current')
         if 'collapse' in tags:
             self.collapse()
+            return
+        if 'history_details' in tags:
+            self.show_history_details()
             return
         self.drag_start = (event.x_root,event.y_root,self.root.winfo_x(),self.root.winfo_y(),'pet' in tags)
         self.dragged = False
@@ -549,10 +807,17 @@ class Companion:
         menu.add_command(label='重新读取账户快照', command=lambda: setattr(self,'last_read',0))
         menu.add_command(label='刷新 Codex 额度', command=self.refresh_usage,
                          state='disabled' if self.refresh_busy else 'normal')
+        automatic=tk.Menu(menu,tearoff=False)
+        automatic.add_command(label='开启：到期前 16–6 分钟',command=lambda:self.enable_auto(960,360),
+                              state='disabled' if self.auto_busy else 'normal')
+        automatic.add_command(label='开启：到期前 5 分钟至到期',command=lambda:self.enable_auto(300,0),
+                              state='disabled' if self.auto_busy else 'normal')
+        automatic.add_command(label='关闭自动使用',command=self.disable_auto)
+        menu.add_cascade(label='临期重置卡自动使用',menu=automatic)
         if not self.root.overrideredirect():
             menu.add_command(label='切换为无边框桌面悬浮', command=self.enable_overlay)
         menu.add_separator()
-        menu.add_command(label='退出桌面小精灵', command=self.close)
+        menu.add_command(label='退出桌面小精灵', command=lambda: self.close('user_menu'))
         try:
             menu.tk_popup(event.x_root,event.y_root)
         finally:
@@ -570,11 +835,17 @@ class Companion:
             self.root.attributes('-transparentcolor',TRANSPARENT)
         self.root.overrideredirect(True)
 
-    def close(self):
+    def close(self, reason='programmatic'):
         if self.closed:
             return
+        logging.info('Desktop close requested: reason=%s', reason)
+        self.close_reason = reason
         self.closed = True
         self.refresh_cancel.set()
+        try:
+            self.write_runtime()
+        except Exception:
+            logging.exception('Final runtime status write failed')
         self.save()
         if self.layered_sprite:
             self.layered_sprite.close()

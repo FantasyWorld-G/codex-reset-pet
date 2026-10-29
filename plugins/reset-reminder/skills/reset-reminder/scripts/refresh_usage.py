@@ -1,4 +1,4 @@
-"""Read-only Codex app-server client. No model turns or credential-file access."""
+"""Codex app-server transport; default refresh is read-only. No credential-file access."""
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -18,7 +18,13 @@ class RefreshError(RuntimeError):
 
 
 def find_codex():
-    candidates = [shutil.which('codex.exe' if os.name == 'nt' else 'codex')]
+    candidates = []
+    if os.name=='nt' and os.environ.get('LOCALAPPDATA'):
+        bundled=Path(os.environ['LOCALAPPDATA'])/'OpenAI/Codex/bin'
+        if bundled.exists():
+            candidates.extend(str(p) for p in sorted(bundled.glob('*/codex.exe'),
+                               key=lambda p:p.stat().st_mtime,reverse=True))
+    candidates.append(shutil.which('codex.exe' if os.name == 'nt' else 'codex'))
     if os.name == 'nt' and os.environ.get('LOCALAPPDATA'):
         candidates.append(str(Path(os.environ['LOCALAPPDATA'])/'Programs/OpenAI/Codex/bin/codex.exe'))
     for candidate in candidates:
@@ -49,6 +55,12 @@ def make_snapshot(account, limits):
 
 
 def fetch_snapshot(cancel=None, timeout=30, executable=None):
+    return account_operation(lambda account,limits,request:make_snapshot(account,limits),
+                             cancel,timeout,executable)
+
+
+def account_operation(operation, cancel=None, timeout=30, executable=None):
+    """Run a caller operation after fresh account and limit reads in one session."""
     cancel = cancel or threading.Event()
     command = [executable or find_codex(),'app-server','--stdio']
     options = {'creationflags':subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {}
@@ -84,6 +96,10 @@ def fetch_snapshot(cancel=None, timeout=30, executable=None):
         process.stdin.flush()
 
     def request(request_id,method,params=None):
+        if cancel.is_set():
+            raise RefreshError('已取消刷新')
+        if time.monotonic()>=deadline:
+            raise RefreshError('请求超时，请稍后重试')
         payload = {'id':request_id,'method':method}
         if params is not None:
             payload['params'] = params
@@ -118,7 +134,7 @@ def fetch_snapshot(cancel=None, timeout=30, executable=None):
         account = account_response.get('account') if isinstance(account_response,dict) else None
         if not isinstance(account,dict) or account.get('type') != 'chatgpt':
             raise RefreshError('请先登录 Codex')
-        return make_snapshot(account,request(3,'account/rateLimits/read'))
+        return operation(account,request(3,'account/rateLimits/read'),request)
     except (OSError,ValueError):
         raise RefreshError('Codex连接异常') from None
     finally:

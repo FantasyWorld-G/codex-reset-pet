@@ -8,6 +8,12 @@ dist/
 *.log
 usage.json
 desktop-usage.json
+tibo-forecast.json
+tibo-forecast.json.*.tmp
+auto-redeem.json
+auto-redeem-state.json
+auto-redeem-state.lock
+auto-redeem*.tmp
 desktop-usage.json.*.tmp
 state.json
 desktop-settings.json

@@ -12,9 +12,12 @@ if (-not $PythonExe) {
     }
 }
 New-Item -ItemType Directory -Path $DataDir -Force | Out-Null
-$script = Join-Path $PSScriptRoot 'plugins/reset-reminder/skills/reset-reminder/scripts/desktop_pet.py'
+$script = Join-Path $PSScriptRoot 'plugins/reset-reminder/skills/reset-reminder/scripts/launch_desktop.py'
 $usage = Join-Path $DataDir 'usage.json'
 $settings = Join-Path $DataDir 'desktop-settings.json'
 $arguments = @(('"'+$script+'"'),'--usage',('"'+$usage+'"'),'--settings',('"'+$settings+'"'))
 # The requested desktop widget is visible; pythonw itself has no console.
-Start-Process -FilePath $PythonExe -ArgumentList $arguments -WindowStyle Hidden
+$launcher = Start-Process -FilePath $PythonExe -ArgumentList $arguments -WindowStyle Hidden -PassThru -Wait
+if ($launcher.ExitCode -ne 0) {
+    throw "Desktop launch failed. See $DataDir/desktop-launcher.log"
+}

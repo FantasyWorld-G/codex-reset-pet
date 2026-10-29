@@ -12,6 +12,7 @@ for line in sys.stdin:
     result = {}
     if method == 'account/read':
         result = {'account': None if mode == 'signed_out' else {'type':'chatgpt'}}
+        if mode=='auto':result={'account':{'type':'chatgpt','email':'test@example.invalid','planType':'pro'}}
     if method == 'account/rateLimits/read':
         if mode == 'disconnect':
             sys.exit(0)
@@ -31,4 +32,10 @@ for line in sys.stdin:
         result = {'rateLimits':{'primary':{'usedPercent':None if mode=='bad_quota' else 40,
                                            'resetsAt':time.time()+7200}},
                   'rateLimitResetCredits':{'availableCount':1}}
+        if mode=='auto':result['rateLimitResetCredits']['credits']=[{
+            'id':'soon','status':'available','resetType':'codexRateLimits','expiresAt':1792700100}]
+    if mode=='auto' and method=='account/rateLimitResetCredit/consume':
+        from pathlib import Path
+        Path(sys.argv[2]).write_text(json.dumps(request['params']),'utf-8')
+        result={'outcome':'reset'}
     print(json.dumps({'id':request['id'],'result':result}),flush=True)

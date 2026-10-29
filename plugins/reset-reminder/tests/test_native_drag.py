@@ -18,7 +18,7 @@ def exercise_native_input(directory):
     faulthandler.enable()
     sys.path.insert(0,str(SCRIPTS))
     from desktop_pet import Companion
-    app = Companion(Path(directory)/'missing-usage.json',Path(directory)/'settings.json')
+    app = Companion(Path(directory)/'missing-usage.json',Path(directory)/'settings.json',tibo_enabled=False)
     sprite = app.layered_sprite
     errors, moves, phases = [], [], set()
     finished = threading.Event()
