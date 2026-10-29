@@ -19,7 +19,7 @@ try {
         throw 'No supported stable release found. See the GitHub Releases page.'
     }
     Write-Host "Updating Codex Reset Pet to $tag. Existing data will be preserved."
-    Write-Host 'Exit the running pet from its right-click menu before updating.'
+    Write-Host 'The installer will gracefully close the previous pet instance before starting the new version.'
     Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/$Repository/$tag/install.ps1" -OutFile $temporaryInstaller
     $installerArguments = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$temporaryInstaller,'-InstallRoot',$InstallRoot)
     if ($NoLaunch) { $installerArguments += '-NoLaunch' }

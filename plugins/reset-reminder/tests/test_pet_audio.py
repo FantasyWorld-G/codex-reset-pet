@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import sys
 import tempfile
 import time
@@ -19,7 +20,7 @@ ASSETS = SCRIPTS.parents[2]/'assets/sounds'
 
 def make_personal_pack(folder):
     folder.mkdir()
-    (folder/'manifest.json').write_text('{"provider":"amitaro"}', 'utf-8')
+    (folder/'manifest.json').write_text('{"provider":"amitaro","selected_by_user":true}', 'utf-8')
     for name in ('click_1','click_2','pout','drag','drag_happy','land','sleep','wake'):
         with wave.open(str(folder/(name+'.wav')), 'wb') as clip:
             clip.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
@@ -38,9 +39,13 @@ class Backend:
 
 class PetAudioTests(unittest.TestCase):
     def setUp(self):
+        self.temp_assets = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_assets.cleanup)
+        self.assets = Path(self.temp_assets.name)/'sounds'
+        shutil.copytree(ASSETS, self.assets)
         self.backend = Backend()
         self.now = 0
-        self.audio = PetAudio(ASSETS, backend=self.backend, clock=lambda:self.now)
+        self.audio = PetAudio(self.assets, backend=self.backend, clock=lambda:self.now)
         self.state = AnimationStateMachine(0)
 
     def observe(self):
@@ -148,7 +153,7 @@ class PetAudioTests(unittest.TestCase):
             personal = Path(directory)/'voice-amitaro'
             make_personal_pack(personal)
             (personal/'pet.wav').write_bytes((personal/'click_2.wav').read_bytes())
-            audio = PetAudio(ASSETS,backend=self.backend,personal_assets=personal)
+            audio = PetAudio(self.assets,backend=self.backend,personal_assets=personal)
             audio.observe('pat',1)
             audio.observe('pat',1)
             self.assertEqual(self.backend.calls[-1],('pet',7))
@@ -178,7 +183,7 @@ class PetAudioTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             personal = Path(directory)/'voice-amitaro'
             make_personal_pack(personal)
-            audio = PetAudio(ASSETS, backend=self.backend, clock=lambda:self.now,
+            audio = PetAudio(self.assets, backend=self.backend, clock=lambda:self.now,
                              personal_assets=personal)
             self.assertEqual(audio.provider, 'amitaro')
             self.assertEqual(audio.assets, personal)
@@ -195,16 +200,16 @@ class PetAudioTests(unittest.TestCase):
     def test_missing_or_incomplete_personal_pack_falls_back(self):
         with tempfile.TemporaryDirectory() as directory:
             personal = Path(directory)/'voice-amitaro'
-            audio = PetAudio(ASSETS, backend=self.backend, personal_assets=personal)
+            audio = PetAudio(self.assets, backend=self.backend, personal_assets=personal)
             self.assertEqual(audio.provider, 'original-synthesis')
             make_personal_pack(personal)
             (personal/'wake.wav').unlink()
             with self.assertLogs(level='ERROR'):
-                audio = PetAudio(ASSETS, backend=self.backend, personal_assets=personal)
-            self.assertEqual(audio.assets, ASSETS)
+                audio = PetAudio(self.assets, backend=self.backend, personal_assets=personal)
+            self.assertEqual(audio.assets, self.assets)
             (personal/'manifest.json').write_text('[]', 'utf-8')
             with self.assertLogs(level='ERROR'):
-                audio = PetAudio(ASSETS, backend=self.backend, personal_assets=personal)
+                audio = PetAudio(self.assets, backend=self.backend, personal_assets=personal)
             self.assertEqual(audio.provider, 'original-synthesis')
 
     @unittest.skipUnless(os.name == 'nt', 'Windows desktop integration')

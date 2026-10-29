@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import time
 import wave
-from voice_pack import validate_pack
+from voice_pack import choose_audio
 
 
 class PetAudio:
@@ -12,17 +12,9 @@ class PetAudio:
     DRAG_HAPPY_SECONDS = .94
 
     def __init__(self, assets, enabled=True, backend=None, clock=time.monotonic, personal_assets=None):
-        self.assets = Path(assets)
-        self.provider = 'original-synthesis'
-        if personal_assets is not None:
-            personal = Path(personal_assets)
-            try:
-                validate_pack(personal)
-                self.assets, self.provider = personal, 'amitaro'
-            except FileNotFoundError:
-                pass
-            except (OSError, ValueError, TypeError, AttributeError, wave.Error, EOFError):
-                logging.exception('Personal voice pack unavailable; using bundled sounds')
+        self.assets, self.provider, errors = choose_audio(assets, personal_assets)
+        for error in errors:
+            logging.error('%s; selected pack: %s', error, self.provider)
         try:
             with wave.open(str(self.assets/'drag_happy.wav'), 'rb') as clip:
                 self.drag_happy_seconds = clip.getnframes()/clip.getframerate()

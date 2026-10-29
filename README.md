@@ -13,12 +13,14 @@ Windows 桌面常驻小精灵，显示 **Codex 账户额度重置** 与 **重置
 
 ## 通过 Codex 安装（优先入口）
 
-当前版本 **v0.4.6**。首次安装，在 **PowerShell 或 Codex 的 PowerShell 终端**依次执行两步。
+当前版本 **v0.4.7**，完整包内置当前 9 段语气音。下载发布包并解压后，双击 **install.cmd** 即可安装/升级并启动；也可使用下面的 Codex 安装方式。
+
+首次安装，在 **PowerShell 或 Codex 的 PowerShell 终端**依次执行两步。
 
 **1. 安装配套插件**（已安装可跳过）：
 
 ```powershell
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.6
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.7
 codex plugin add reset-reminder@codex-reset-pet
 ```
 
@@ -26,7 +28,7 @@ codex plugin add reset-reminder@codex-reset-pet
 
 ```powershell
 $file = "$env:TEMP\codex-reset-pet-install.ps1"
-Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.6/install.ps1' -OutFile $file
+Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.7/install.ps1' -OutFile $file
 powershell -NoProfile -ExecutionPolicy Bypass -File $file -SkipPlugin
 ```
 
@@ -56,7 +58,7 @@ codex-pet
 
 ## 一键更新（已安装用户）
 
-先右键人物 → **退出桌面小精灵**，再在 PowerShell 执行：
+在 PowerShell 执行；安装器会正常关闭旧实例，再启动新版：
 
 ```powershell
 $file = "$env:TEMP\codex-reset-pet-update.ps1"
@@ -66,18 +68,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $file
 
 自动安装最新稳定版并启动，保留账户快照、设置和个人音效。以后仍使用这组命令，无需手动改版本号。只安装桌面的用户在最后一行加 `-SkipPlugin`；自定义目录加 `-InstallRoot '原安装目录'`。
 
-## 使用这台电脑同款语气音
+## 内置新版语气音
 
-**更新程序不会自动安装 Amitaro 录音。** 默认包为合成音；个人录音单独保存在本机，更新会保留它。
+**完整安装包已包含当前 9 段语气音，安装或升级后直接使用，无需复制文件或执行导入命令。** 旧版自动发现的个人音效文件会保留，但不会遮盖新版默认音效；静音偏好不变。`codex-pet sounds` 显示 `amitaro-bundled` 时就是内置新版。
 
-在另一台设备使用同款音效：先更新至 v0.4.6 或以上，退出小精灵，将原设备的 `%LOCALAPPDATA%\CodexResetPet\data\voice-amitaro` 文件夹复制到新设备，再执行（替换示例路径）：
-
-```powershell
-codex-pet sounds "D:\voice-amitaro"
-codex-pet
-```
-
-只复制音效文件夹，无需复制账户信息。没有现成音效时，先从作者页面手动下载六段录音，再用同一命令导入；[素材列表、步骤及使用条款](docs/voice-credits.md#安装与跨设备迁移--install-and-transfer)。
+需要主动使用自己的音效时，才使用可选的 `codex-pet sounds "音效文件夹"`。[音效对应关系与署名](docs/voice-credits.md)。
 
 ## 第一次同步账户
 
@@ -114,4 +109,4 @@ codex-pet
 ## 音效署名
 
 
-个人可选录音包的声音来自 **あみたろの声素材工房（Amitaro’s Voice Material Studio）**：[作者网站](https://amitaro.net/)。感谢作者提供录音素材。录音遵循[作者使用条款](https://amitaro.net/voice/voice_rule/)，不属于本项目源码许可。仓库与安装包不包含这些第三方录音；默认提供项目合成音效。详细文件对应关系见[语气音与署名说明](docs/voice-credits.md)。
+内置语气音的声音来自 **あみたろの声素材工房（Amitaro’s Voice Material Studio）**：[作者网站](https://amitaro.net/)。感谢作者提供录音素材。录音遵循[作者使用条款](https://amitaro.net/voice/voice_rule/)，不属于本项目源码许可。录音仅作为完整应用的资源内置，不作为独立素材包发布；使用和再分发须遵守作者条款。原合成音仅作损坏时的回退。详细文件对应关系见[语气音与署名说明](docs/voice-credits.md)。

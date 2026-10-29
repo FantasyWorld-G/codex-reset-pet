@@ -8,7 +8,7 @@ param(
     [switch]$NoPath
 )
 $ErrorActionPreference = 'Stop'
-$Version = '0.4.6'
+$Version = '0.4.7'
 $Repository = 'FantasyWorld-G/codex-reset-pet'
 $InstallRoot = [IO.Path]::GetFullPath($InstallRoot)
 $appRoot = Join-Path $InstallRoot ('app/'+$Version)
@@ -86,6 +86,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed; rerun to retry.' }
     & $runtimePython -c 'import tkinter; from PIL import Image,ImageTk,ImageDraw,ImageFont'
     if ($LASTEXITCODE -ne 0) { throw 'Runtime dependency check failed.' }
+    & $runtimePython (Join-Path $appRoot 'scripts/verify_bundle.py')
+    if ($LASTEXITCODE -ne 0) { throw 'The voice resources are missing or damaged. Use the complete installation package.' }
     $pythonw = Join-Path $runtimeRoot 'Scripts/pythonw.exe'
     $pluginInstalled = $false
     if (-not $SkipPlugin) {
@@ -111,10 +113,11 @@ try {
         $shortcut.Description = 'Codex Reset Pet - desktop reset countdown'
         $shortcut.Save()
     }
+    & (Join-Path $appRoot 'scripts/stop_installed_pet.ps1') -InstallRoot $InstallRoot
     $info = @{version=$Version;appRoot=$appRoot;dataDir=$dataRoot;pythonw=$pythonw;pluginInstalled=$pluginInstalled}
     [IO.File]::WriteAllText((Join-Path $InstallRoot 'install.json'),($info | ConvertTo-Json),[Text.UTF8Encoding]::new($false))
     & (Join-Path $appRoot 'scripts/register_command.ps1') -InstallRoot $InstallRoot -NoPath:$NoPath
-    Write-Host 'Audio: bundled synthesized sounds by default; personal recordings are separate. Check with: codex-pet sounds'
+    Write-Host 'Audio: the complete package includes the current 9 voice clips; no manual import is needed. Check with: codex-pet sounds'
     if (-not $NoLaunch) { & $startScript -DataDir $dataRoot -PythonExe $pythonw }
     Write-Host "Installed $Version at $appRoot"
     Write-Host "Account snapshot directory: $dataRoot"

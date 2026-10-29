@@ -1,0 +1,8 @@
+Voice: Amitaro's Voice Material Studio (https://amitaro.net/)
+声素材：あみたろの声素材工房
+Terms: https://amitaro.net/voice/voice_rule/
+English terms: https://amitaro.net/voice/terms/
+Licensed third-party recordings; not CC0 or covered by this app's source license.
+Included as audio resources of the complete Codex Reset Pet application.
+Do not redistribute as a standalone voice pack. Follow the author terms for reuse.
+Attribution does not imply author endorsement or individual approval.

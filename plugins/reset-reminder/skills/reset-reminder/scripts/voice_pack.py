@@ -86,6 +86,26 @@ def validate_pack(folder):
     return metadata, names
 
 
+def choose_audio(assets, personal):
+    """Use the release voices unless the user explicitly selects a local pack."""
+    selected, provider, errors = Path(assets), 'original-synthesis', []
+    bundled = Path(assets).parent/'bundled-voice'
+    if bundled.exists():
+        try:
+            validate_pack(bundled)
+            selected, provider = bundled, 'amitaro-bundled'
+        except (OSError, ValueError, TypeError, wave.Error, EOFError) as error:
+            errors.append(f'Bundled voices unavailable: {error}')
+    if personal is not None and Path(personal).exists():
+        try:
+            metadata, _ = validate_pack(Path(personal))
+            if provider == 'original-synthesis' or metadata.get('selected_by_user') is True:
+                selected, provider = Path(personal), 'amitaro'
+        except (OSError, ValueError, TypeError, wave.Error, EOFError) as error:
+            errors.append(f'Personal voices unavailable: {error}')
+    return selected, provider, errors
+
+
 def build_raw(source, destination):
     processed = {}
     records = []
@@ -139,7 +159,11 @@ def import_pack(source, data_dir):
     if target.exists() and not target.is_dir():
         raise ValueError('voice-amitaro is not a directory')
     if source.resolve() == target.resolve():
-        validate_pack(target)
+        metadata, _ = validate_pack(target)
+        metadata['selected_by_user'] = True
+        replacement = target/'manifest.json.new'
+        replacement.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), 'utf-8')
+        replacement.replace(target/'manifest.json')
         return 'Already installed; validated the existing personal pack.'
     temporary = Path(tempfile.mkdtemp(prefix='.voice-import-', dir=data_dir))
     staged, backup = temporary/'new', temporary/'previous'
@@ -151,6 +175,9 @@ def import_pack(source, data_dir):
                 shutil.copyfile(source/name, staged/name)
         else:
             build_raw(source, staged)
+        metadata = json.loads((staged/'manifest.json').read_text('utf-8-sig'))
+        metadata['selected_by_user'] = True
+        (staged/'manifest.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2), 'utf-8')
         (staged/'CREDITS.txt').write_text(
             f'{CREDIT}\nTerms: {TERMS}\nEnglish terms: {ENGLISH_TERMS}\n'
             'Personal local use; not CC0. Do not publish as a standalone voice pack.\n', 'utf-8')
@@ -172,8 +199,15 @@ def import_pack(source, data_dir):
     return 'Installed Amitaro personal voices. Start the pet with: codex-pet'
 
 
-def describe(data_dir):
+def describe(data_dir, assets=None):
     folder = Path(data_dir)/'voice-amitaro'
+    if assets is not None:
+        selected, provider, errors = choose_audio(assets, folder)
+        message = f'Configured sound pack: {provider}.\nLocation: {selected}'
+        if provider != 'original-synthesis':
+            metadata, names = validate_pack(selected)
+            message += f'\nClips: {len(names)}; recipe: {metadata.get("recipe", "personal import")}'
+        return message + ''.join('\n'+error for error in errors)
     if not folder.exists():
         return f'Configured sound pack: original-synthesis (bundled).\nNo personal pack at: {folder}'
     try:
@@ -188,13 +222,18 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--data-dir', type=Path, required=True)
     parser.add_argument('--source', type=Path)
+    parser.add_argument('--assets', type=Path)
     args = parser.parse_args()
     try:
         if args.source:
             print(import_pack(args.source, args.data_dir))
-        print(describe(args.data_dir))
+        print(describe(args.data_dir, args.assets))
         if not args.source:
-            print('Import: codex-pet sounds "path-to-voice-folder"\nGuide: docs/voice-credits.md')
+            if args.assets and choose_audio(args.assets, args.data_dir/'voice-amitaro')[1] == 'amitaro-bundled':
+                print('Included voices are ready. No manual import is required.')
+            else:
+                print('Optional personal override: codex-pet sounds "path-to-voice-folder"')
+            print('Guide: docs/voice-credits.md')
     except (OSError, ValueError, TypeError, wave.Error, EOFError) as error:
         print(f'Voice import failed: {error}', file=sys.stderr)
         return 1

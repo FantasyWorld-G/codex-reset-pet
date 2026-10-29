@@ -13,12 +13,14 @@ This is an independent local desktop application and Codex skill plugin, not an 
 
 ## Install through Codex (plugin first)
 
-Current version: **v0.4.6**. For first-time setup, run these two steps in **PowerShell or Codex's PowerShell terminal**.
+Current version: **v0.4.7**, including all nine current voice reactions. Download and extract the complete release, then double-click **install.cmd** to install/upgrade and launch, or use the Codex setup below.
+
+ For first-time setup, run these two steps in **PowerShell or Codex's PowerShell terminal**.
 
 **1. Install the companion plugin** (skip if already installed):
 
 ```powershell
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.6
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.7
 codex plugin add reset-reminder@codex-reset-pet
 ```
 
@@ -26,7 +28,7 @@ codex plugin add reset-reminder@codex-reset-pet
 
 ```powershell
 $file = "$env:TEMP\codex-reset-pet-install.ps1"
-Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.6/install.ps1' -OutFile $file
+Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.7/install.ps1' -OutFile $file
 powershell -NoProfile -ExecutionPolicy Bypass -File $file -SkipPlugin
 ```
 
@@ -56,7 +58,7 @@ If the command is not found, fully close and reopen your terminal app; embedded 
 
 ## One-command update (existing installations)
 
-Right-click the pet → **退出桌面小精灵** (Exit), then run in PowerShell:
+Run in PowerShell; the installer gracefully closes the previous instance and starts the new version:
 
 ```powershell
 $file = "$env:TEMP\codex-reset-pet-update.ps1"
@@ -66,18 +68,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $file
 
 This installs and launches the latest stable release while preserving account snapshots, settings, and personal audio. Reuse these commands for future updates without changing a version number. For desktop-only installations, append `-SkipPlugin` to the final line; for a custom directory, append `-InstallRoot 'original installation directory'`.
 
-## Use the same personal voices on another device
+## Included voice reactions
 
-**Updating the app does not install Amitaro recordings.** Synthesized audio is bundled by default; personal recordings are stored separately and preserved by updates.
+**The complete package includes all nine current voice clips. Installation and upgrades use them immediately; no copying or importing is required.** Legacy auto-detected personal files remain on disk but do not hide updated default voices. Mute preferences remain unchanged. `codex-pet sounds` reports `amitaro-bundled` for these included voices.
 
-Update to v0.4.6 or later, quit the pet, and copy your existing `%LOCALAPPDATA%\CodexResetPet\data\voice-amitaro` folder from your original device to the other device. Then run (replace the example path):
-
-```powershell
-codex-pet sounds "D:\voice-amitaro"
-codex-pet
-```
-
-Copy only the voice folder, not account data. If you do not have a prepared pack, download the six originals manually from the author's page and import that folder using the same command. See [files, steps, and terms](docs/voice-credits.md#安装与跨设备迁移--install-and-transfer).
+Only use the optional `codex-pet sounds "voice-folder"` command when deliberately selecting a personal override. See [voice mapping and credits](docs/voice-credits.md).
 
 ## First account sync
 
@@ -114,4 +109,4 @@ The bubble shows quota, credit expiry, Tibo forecasts, and the previous reset. T
 ## Voice credits
 
 
-The optional personal recording pack uses voices by **Amitaro’s Voice Material Studio — あみたろの声素材工房** ([official website](https://amitaro.net/)). Thank you to the creator for providing these recordings. They are governed by the [author’s terms](https://amitaro.net/voice/terms/), not this project’s source license. Third-party recordings are not included in the repository or installer; the default sounds are synthesized for this project. See [voice notes and credits](docs/voice-credits.md) for the clip mapping.
+The included voice reactions use recordings by **Amitaro’s Voice Material Studio — あみたろの声素材工房** ([official website](https://amitaro.net/)). Thank you to the creator for providing these recordings. They are governed by the [author’s terms](https://amitaro.net/voice/terms/), not this project’s source license. Recordings are included as resources of the complete application, not distributed as a standalone asset pack. Usage and redistribution remain subject to the author’s terms. Original synthesized audio is kept only as a corruption fallback. See [voice notes and credits](docs/voice-credits.md) for the clip mapping.

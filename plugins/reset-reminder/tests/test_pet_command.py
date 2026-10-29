@@ -98,10 +98,30 @@ exit $LASTEXITCODE
         for name in voice_pack.NAMES:
             voice_pack.write_pcm(source/(name+'.wav'), [1000]*4410)
         self.assertIn('Installed Amitaro', self.run_command('sounds', source=source))
-        self.assertIn('amitaro (8 clips)', self.run_command('sounds'))
+        self.assertIn('Clips: 8', self.run_command('sounds'))
         self.assertIn('failed', self.run_command('sounds', source=self.root/'missing', expected=1))
         self.run_command('start')
         self.assertIn('Exit the pet', self.run_command('sounds', source=source, expected=1))
+
+    def test_install_cmd_passes_local_source_and_options_with_spaces(self):
+        shutil.copyfile(ROOT/'install.cmd', self.app/'install.cmd')
+        (self.app/'install.ps1').write_text('''param($SourcePath,$InstallRoot,[switch]$SkipPlugin,[switch]$NoLaunch,[switch]$NoShortcut,[switch]$NoPath)
+@{source=(Resolve-Path -LiteralPath $SourcePath).Path;destination=$InstallRoot;skip=[bool]$SkipPlugin;noLaunch=[bool]$NoLaunch;noPath=[bool]$NoPath} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $PSScriptRoot 'received.json')
+''', 'utf-8')
+        harness = self.root/'install-harness.ps1'
+        harness.write_text('''param($Entry,$Destination)
+& $Entry -InstallRoot $Destination -NoLaunch -NoShortcut -NoPath
+exit $LASTEXITCODE
+''', 'utf-8')
+        destination = self.root/'custom install'
+        result = subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',str(harness),
+                                 '-Entry',str(self.app/'install.cmd'),'-Destination',str(destination)],
+                                capture_output=True,text=True,timeout=20)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        received = json.loads((self.app/'received.json').read_text('utf-8-sig'))
+        self.assertTrue(os.path.samefile(received['source'], self.app))
+        self.assertEqual(Path(received['destination']), destination)
+        self.assertTrue(received['skip'] and received['noLaunch'] and received['noPath'])
 
 
 if __name__ == '__main__':

@@ -119,6 +119,44 @@ class VoicePackTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Source must be a folder'):
             voice.import_pack(self.root/'absent', self.data)
 
+    def test_complete_release_works_on_fresh_install_and_overrides_legacy_pack(self):
+        import shutil
+        self.prepared()
+        assets = self.root/'assets/sounds'
+        assets.mkdir(parents=True)
+        bundled = assets.parent/'bundled-voice'
+        shutil.copytree(self.source, bundled)
+        chosen, provider, errors = voice.choose_audio(assets, self.target)
+        self.assertEqual((chosen, provider, errors), (bundled, 'amitaro-bundled', []))
+        # Legacy packs remain intact but no longer hide updated release voices.
+        shutil.copytree(self.source, self.target)
+        original = (self.target/'pout.wav').read_bytes()
+        self.assertEqual(voice.choose_audio(assets, self.target)[0], bundled)
+        self.assertIn('amitaro-bundled', voice.describe(self.data, assets))
+        self.assertEqual((self.target/'pout.wav').read_bytes(), original)
+        audio = PetAudio(assets, backend=object(), personal_assets=self.target)
+        self.assertEqual(audio.provider, 'amitaro-bundled')
+        self.assertTrue((audio.assets/'pet.wav').is_file())
+        # A deliberate import still permits personal customization.
+        voice.import_pack(self.source, self.data)
+        self.assertEqual(voice.choose_audio(assets, self.target)[0], self.target)
+
+    def test_corrupt_bundled_pack_reports_fallback_and_mute_is_preserved(self):
+        import shutil
+        self.prepared()
+        assets = self.root/'assets/sounds'
+        assets.mkdir(parents=True)
+        bundled = assets.parent/'bundled-voice'
+        shutil.copytree(self.source, bundled)
+        (bundled/'pout.wav').write_bytes(b'corrupt')
+        chosen, provider, errors = voice.choose_audio(assets, None)
+        self.assertEqual((chosen, provider), (assets, 'original-synthesis'))
+        self.assertTrue(errors)
+        shutil.copyfile(self.source/'pout.wav', bundled/'pout.wav')
+        audio = PetAudio(assets, enabled=False, backend=object())
+        self.assertEqual(audio.provider, 'amitaro-bundled')
+        self.assertFalse(audio.play('pet'))
+
 
 if __name__ == '__main__':
     unittest.main()

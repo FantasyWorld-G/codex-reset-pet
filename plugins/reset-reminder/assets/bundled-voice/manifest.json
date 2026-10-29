@@ -1,0 +1,91 @@
+{
+  "provider": "amitaro",
+  "credit": "Voice: Amitaro's Voice Material Studio (https://amitaro.net/)",
+  "license_url": "https://amitaro.net/voice/voice_rule/",
+  "english_terms_url": "https://amitaro.net/voice/terms/",
+  "usage": "Bundled as resources of the complete Codex Reset Pet application. Subject to the author terms; not a standalone voice collection, not CC0.",
+  "processing": "No pitch/time changes. Uniform gain reduction, 3ms edge fades. Sleep padded with silence to 3s.",
+  "clips": [
+    {
+      "file": "click_1.wav",
+      "original": "fufu_02.wav",
+      "source_page": "https://amitaro.net/voice/game_01/#102_reaction",
+      "source_sha256": "06601a314554bc9e03632a545a600b9b27ca7f122a003df5d121ace95aa23fd9",
+      "installed_sha256": "88464b2f5256898371a7a7b9ce494a1e94542fe84dd2ae4095f8537860a545c6",
+      "duration": 0.8792743764172336,
+      "gain": 0.9576286400166998
+    },
+    {
+      "file": "click_2.wav",
+      "original": "ehehe_01.wav",
+      "source_page": "https://amitaro.net/voice/game_01/#106_kanjou",
+      "source_sha256": "15f074f34217b2e6843d49145f855e3b06dc9937361187fcc284031a72b55a9b",
+      "installed_sha256": "5104574eb301119fe7bacd23f2355a7180bc8a9025724886e564822b7d3524c9",
+      "duration": 0.7778684807256235,
+      "gain": 0.7813864758984842
+    },
+    {
+      "file": "pout.wav",
+      "original": "nmou_03.wav",
+      "source_page": "https://amitaro.net/voice/game_01/#106_kanjou",
+      "source_sha256": "0774c345ed215ba19f5d6607b201692a694baeca6c046440313b7f8bdc8e5d24",
+      "installed_sha256": "36a78a91e8b3101b28f3033ab4140e22aa5b1f066fbced9df6a0d9952013aa57",
+      "duration": 1.8870068027210884,
+      "gain": 0.54561913408676
+    },
+    {
+      "file": "drag.wav",
+      "original": "fufu_02.wav",
+      "source_page": "https://amitaro.net/voice/game_01/#102_reaction",
+      "source_sha256": "06601a314554bc9e03632a545a600b9b27ca7f122a003df5d121ace95aa23fd9",
+      "installed_sha256": "88464b2f5256898371a7a7b9ce494a1e94542fe84dd2ae4095f8537860a545c6",
+      "duration": 0.8792743764172336,
+      "gain": 0.9576286400166998
+    },
+    {
+      "file": "drag_happy.wav",
+      "original": "aha_01.wav",
+      "source_page": "https://amitaro.net/voice/game_01/#106_kanjou",
+      "source_sha256": "206801d57848f9de89273dca91201ad05ca7cc2efc7c4c56bd6fa78e93a5664b",
+      "installed_sha256": "3f784be9abb508d08ec38603c3d87ece30cf8f683d485810537aad0895bbdaf5",
+      "duration": 0.40226757369614513,
+      "gain": 0.3845515000656814
+    },
+    {
+      "file": "land.wav",
+      "original": "ehehe_01.wav",
+      "source_page": "https://amitaro.net/voice/game_01/#106_kanjou",
+      "source_sha256": "15f074f34217b2e6843d49145f855e3b06dc9937361187fcc284031a72b55a9b",
+      "installed_sha256": "5104574eb301119fe7bacd23f2355a7180bc8a9025724886e564822b7d3524c9",
+      "duration": 0.7778684807256235,
+      "gain": 0.7813864758984842
+    },
+    {
+      "file": "sleep.wav",
+      "original": "akubi_03.wav",
+      "source_page": "https://amitaro.net/voice/game_01/#195_serifu_others",
+      "source_sha256": "08efd5c73bdeb1af032d513a309c00b6850cc080d6ca90e34237534b963bcc07",
+      "installed_sha256": "59a50d6d62029fa7997d8fd2732aefb5a1793697353c7f2d33c736c2c17f6b93",
+      "duration": 3.0,
+      "gain": 1.0
+    },
+    {
+      "file": "wake.wav",
+      "original": "n_02.wav",
+      "source_page": "https://amitaro.net/voice/game_01/#101_henji",
+      "source_sha256": "970e3231c64e15571b4062f56d7238876561fb2d8a5d6fb80c248701d5fdb0de",
+      "installed_sha256": "173085e7f166797260c4a12d59d2086903cd305ce3ce75654802e0ba63ca375b",
+      "duration": 0.382108843537415,
+      "gain": 1.0
+    },
+    {
+      "file": "pet.wav",
+      "original": "fufu_02.wav + ehehe_01.wav",
+      "source_page": "https://amitaro.net/voice/game_01/",
+      "processing": "Two existing licensed laughs joined with 100ms silence, gain 0.85; no pitch/time changes",
+      "installed_sha256": "d5ec28962bb262938c7579004134806345c207ec45f08ab1c58a348d2ea7c13e",
+      "duration": 1.7571428571428571
+    }
+  ],
+  "recipe": "2026-10-29"
+}

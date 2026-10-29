@@ -55,7 +55,8 @@ try {
             if ($Source -and (Find-RunningPet)) { throw 'Exit the pet using its right-click menu before importing voices, then retry.' }
             $python = Join-Path (Split-Path $info.pythonw -Parent) 'python.exe'
             $voiceScript = Join-Path $info.appRoot 'plugins/reset-reminder/skills/reset-reminder/scripts/voice_pack.py'
-            $voiceArgs = @('-X','utf8',$voiceScript,'--data-dir',$info.dataDir)
+            $assets = Join-Path $info.appRoot 'plugins/reset-reminder/assets/sounds'
+            $voiceArgs = @('-X','utf8',$voiceScript,'--data-dir',$info.dataDir,'--assets',$assets)
             if ($Source) { $voiceArgs += @('--source',$Source) }
             & $python @voiceArgs
             $voiceExit = $LASTEXITCODE
