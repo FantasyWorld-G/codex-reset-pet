@@ -121,8 +121,9 @@ try {
     if (-not $NoLaunch) { & $startScript -DataDir $dataRoot -PythonExe $pythonw }
     Write-Host "Installed $Version at $appRoot"
     Write-Host "Account snapshot directory: $dataRoot"
-    Write-Host 'Open a new Codex chat and ask the reset-reminder plugin to synchronize your account once.'
-    Write-Host 'No scheduled checks or Windows startup task have been enabled.'
+    Write-Host 'Quota refresh is on by default: at startup, then every 5 minutes. Sign in to Codex CLI on this device.'
+    Write-Host 'Optional: use reset-reminder in Codex to synchronize full reset-credit details.'
+    Write-Host 'No Codex scheduled task or Windows startup task has been created.'
 } finally {
     $resolvedTemporary = [IO.Path]::GetFullPath($temporaryRoot)
     $temporaryParent = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\')+'\'
