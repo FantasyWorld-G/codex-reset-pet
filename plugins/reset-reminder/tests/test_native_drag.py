@@ -18,7 +18,7 @@ def exercise_native_input(directory):
     faulthandler.enable()
     sys.path.insert(0,str(SCRIPTS))
     from desktop_pet import Companion
-    app = Companion(Path(directory)/'missing-usage.json',Path(directory)/'settings.json',tibo_enabled=False)
+    app = Companion(Path(directory)/'missing-usage.json',Path(directory)/'settings.json',tibo_enabled=False,sound_enabled=False)
     sprite = app.layered_sprite
     errors, moves, phases = [], [], set()
     finished = threading.Event()
@@ -26,6 +26,13 @@ def exercise_native_input(directory):
     moving_enabled.set()
     original_move = sprite.on_move
     original_release = sprite.on_release
+    original_react = app.react
+
+    def react(action):
+        original_react(action)
+        phases.add(action)
+
+    app.react = react
 
     def move(x,y):
         # Displace only this app's event. Do not move the real desktop pointer.
@@ -63,6 +70,12 @@ def exercise_native_input(directory):
             time.sleep(.05)
             send(sprite.hwnd,0x201,0,0)
             send(sprite.hwnd,0x202,0,0)
+            time.sleep(.5)  # Let the single-click/double-click decision settle.
+            send(sprite.hwnd,0x201,0,0)
+            send(sprite.hwnd,0x202,0,0)
+            time.sleep(.08)
+            send(sprite.hwnd,0x201,0,0)
+            send(sprite.hwnd,0x202,0,0)
             send(sprite.hwnd,0x205,0,0)
         except Exception as exc:
             errors.append(str(exc))
@@ -78,7 +91,7 @@ def exercise_native_input(directory):
             assert not errors, errors
             assert len(moves)>20, len(moves)
             assert len(set(moves))>5, 'Drag must actually move the window'
-            assert {'drag','land','click','menu'} <= phases, (phases,app.click_count,app.drag_start,sprite.pointer_down)
+            assert {'drag','land','click','pat','menu'} <= phases, (phases,app.click_count,app.drag_start,sprite.pointer_down)
             assert app.drag_start is None
             assert app.click_count == 1, app.click_count
             assert not sprite.pointer_down

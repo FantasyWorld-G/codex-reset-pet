@@ -15,7 +15,7 @@ class AnimationTests(unittest.TestCase):
         self.assertEqual(animation_pose(*machine.update(100))[0],5)
 
     def test_action_completion_never_inserts_sleep_frame(self):
-        for action in (State.CLICK,State.POUT,State.LAND):
+        for action in (State.CLICK,State.PAT,State.POUT,State.LAND):
             machine = AnimationStateMachine(0)
             machine.play(action,1)
             self.assertEqual(machine.update(2.59)[0],action)
@@ -25,7 +25,7 @@ class AnimationTests(unittest.TestCase):
 
     def test_idle_and_sleep_can_switch_directly_to_every_action(self):
         for source_time in (0,11):
-            for target,frame in ((State.CLICK,1),(State.POUT,3),(State.DRAG,2),(State.LAND,4)):
+            for target,frame in ((State.CLICK,1),(State.PAT,1),(State.POUT,3),(State.DRAG,2),(State.LAND,4)):
                 machine = AnimationStateMachine(0)
                 machine.update(source_time)
                 machine.play(target,source_time)

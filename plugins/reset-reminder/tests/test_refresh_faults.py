@@ -130,7 +130,7 @@ def close_worker(directory):
         finally:
             time.sleep(.3)
             (Path(directory)/'cleanup-complete').write_text('done')
-    app=pet.Companion(Path(directory)/'usage.json',Path(directory)/'settings.json',tibo_enabled=False)
+    app=pet.Companion(Path(directory)/'usage.json',Path(directory)/'settings.json',tibo_enabled=False,sound_enabled=False)
     def close_when_ready():
         if ready.is_set():app.close()
         else:app.root.after(10,close_when_ready)
@@ -146,7 +146,7 @@ def ui_worker(directory):
         'accountId':'test','rateLimits':{'primary':{'usedPercent':25,'resetsAt':time.time()+7200}}}}
     refresh.save_snapshot(folder/'usage.json',original)
     refresh.save_snapshot(folder/'desktop-usage.json',original)
-    app=pet.Companion(folder/'usage.json',folder/'settings.json',tibo_enabled=False)
+    app=pet.Companion(folder/'usage.json',folder/'settings.json',tibo_enabled=False,sound_enabled=False)
     app.expanded=True;app.draw()
     errors=[];processes=[];calls=[];completed=[];beats=[]
     app.root.report_callback_exception=lambda kind,value,tb:errors.append(str(value))

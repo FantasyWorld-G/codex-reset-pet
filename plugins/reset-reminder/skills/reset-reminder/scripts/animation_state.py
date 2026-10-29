@@ -6,6 +6,7 @@ import math
 class State(str, Enum):
     IDLE = 'idle'
     CLICK = 'click'
+    PAT = 'pat'
     POUT = 'pout'
     DRAG = 'drag'
     LAND = 'land'
@@ -15,7 +16,7 @@ class State(str, Enum):
 class AnimationStateMachine:
     SLEEP_AFTER = 10.0
     ACTION_DURATION = 1.6
-    TIMED = {State.CLICK, State.POUT, State.LAND}
+    TIMED = {State.CLICK, State.PAT, State.POUT, State.LAND}
 
     def __init__(self, now):
         self.state = State.IDLE
@@ -71,6 +72,8 @@ def animation_pose(action, elapsed, drag_angle=0):
         return 3,6*math.sin(elapsed*9),0,'哼，再戳就生气'
     if state == State.CLICK:
         return 1,0,-math.sin(min(1,elapsed/1.6)*math.pi)*9,'你好呀'
+    if state == State.PAT:
+        return 1,3*math.sin(elapsed*5),-math.sin(min(1,elapsed/1.6)*math.pi)*4,'摸摸头 · 好舒服'
     return 0,0,math.sin(elapsed*2)*2,'点击互动'
 
 

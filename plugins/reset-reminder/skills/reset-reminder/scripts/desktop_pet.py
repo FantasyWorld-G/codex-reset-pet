@@ -30,6 +30,7 @@ from tibo_forecast import fetch_forecast, forecast_view, source_url
 from auto_redeem import run_cycle, read_config, valid_policy, exact_credit_client, card_rows
 from refresh_usage import account_operation, make_snapshot
 from launch_desktop import in_windows_job, windows_job_flags
+from pet_audio import PetAudio
 
 TRANSPARENT = '#ff00ff'
 BG = '#182735'
@@ -137,7 +138,7 @@ def display_model(envelope, manual, now):
 class Companion:
     WIDTH, HEIGHT = 370, 873
 
-    def __init__(self, usage, settings, windowed=False, tibo_enabled=True):
+    def __init__(self, usage, settings, windowed=False, tibo_enabled=True, sound_enabled=None):
         self.usage, self.settings = Path(usage), Path(settings)
         self.closed = False
         self.started_at = time.time()
@@ -161,6 +162,9 @@ class Companion:
         self.animation = AnimationStateMachine(time.monotonic())
         self.rendered_revision = -1
         self.click_count = 0
+        self.pending_click = None
+        self.click_timer = None
+        self.double_click = False
         self.drag_angle = 0
         self.smooth_angle = 0.0
         self.frame_times = deque(maxlen=180)
@@ -209,6 +213,7 @@ class Companion:
         self.tibo_model = forecast_view(None,time.time())
         self.last_read = 0
         self.model = unavailable()
+        saved_sound = True
         x = max(0, self.root.winfo_screenwidth()-self.WIDTH-34)
         y = max(0, self.root.winfo_screenheight()-self.HEIGHT-90)
         try:
@@ -216,8 +221,12 @@ class Companion:
             x = max(0, min(int(saved.get('x', x)), self.root.winfo_screenwidth()-self.WIDTH))
             y = max(0, min(int(saved.get('y', y)), self.root.winfo_screenheight()-self.HEIGHT))
             self.expanded = bool(saved.get('expanded', True))
+            saved_sound = saved.get('sound_enabled', True) is not False
         except (OSError, ValueError, TypeError):
             pass
+        self.audio = PetAudio(Path(__file__).resolve().parents[3]/'assets/sounds',
+                              saved_sound if sound_enabled is None else sound_enabled,
+                              personal_assets=self.settings.parent/'voice-amitaro')
         self.root.geometry(f'{self.WIDTH}x{self.HEIGHT}+{x}+{y}')
         self.canvas = tk.Canvas(self.root, width=self.WIDTH, height=self.HEIGHT,
                                 bg=BG if windowed else TRANSPARENT, highlightthickness=0)
@@ -334,6 +343,9 @@ class Companion:
             'snapshot_stale': self.model['stale'], 'started_at': self.started_at,
             'heartbeat_at': time.time(), 'in_windows_job': self.in_job,
             'windows_job_flags': self.job_flags,
+            'sound_enabled': self.audio.enabled,
+            'sound_pack': self.audio.provider,
+            'happy_sound_seconds': self.audio.drag_happy_seconds,
             'lifecycle': 'closed' if self.closed else 'running',
             'close_reason': self.close_reason,
             'sprite_loaded': len(self.sprites), 'interaction': self.interaction,
@@ -415,7 +427,7 @@ class Companion:
         # Windows transparency key. Static text is not deleted every frame.
         if self.expanded:
             self.rounded(16,644,160,142,14,BG,tags='help')
-            self.text(28,657,'点击 · 表情 / 展开气泡',12,'#ffffff',tags='help')
+            self.text(28,657,'单击 · 气泡 / 双击 · 摸头',11,'#ffffff',tags='help')
             self.text(28,682,'拖拽 · 提起并晃动',12,'#ffffff',tags='help')
             self.text(28,707,'松手 · 落地弹跳',12,'#ffffff',tags='help')
             self.text(28,733,'右键 · 玩法与退出',11,'#ffffff',tags='help')
@@ -619,6 +631,7 @@ class Companion:
             self.last_read = 0
 
     def react(self, action):
+        self.cancel_pending_click()
         self.animation.play(action,time.monotonic())
 
     def open_tibo(self):
@@ -684,6 +697,7 @@ class Companion:
         self.previous_frame_time = now
         self.frame_times.append(now)
         state,elapsed = self.animation.update(time.monotonic())
+        self.audio.observe(state, self.animation.revision)
         frame,angle,offset,label = animation_pose(state,elapsed,self.drag_angle)
         if self.rendered_revision != self.animation.revision:
             self.smooth_angle = angle
@@ -742,11 +756,23 @@ class Companion:
         if 'history_details' in tags:
             self.show_history_details()
             return
+        if 'pet' in tags:
+            self.press_pet(event.x_root,event.y_root)
+            return
+        self.cancel_pending_click()
         self.drag_start = (event.x_root,event.y_root,self.root.winfo_x(),self.root.winfo_y(),'pet' in tags)
         self.dragged = False
         self.animation.press(time.monotonic())
 
     def press_pet(self, x, y):
+        self.double_click = False
+        if self.pending_click:
+            previous_x,previous_y,when = self.pending_click
+            if time.monotonic()-when <= .3 and math.hypot(x-previous_x,y-previous_y) <= 12:
+                self.cancel_pending_click()
+                self.double_click = True
+            else:
+                self.finish_single_click()
         self.animation.press(time.monotonic())
         self.drag_start = (x,y,self.root.winfo_x(),self.root.winfo_y(),True)
         self.dragged = False
@@ -757,27 +783,53 @@ class Companion:
             x,y,wx,wy,_ = self.drag_start
             dx,dy = event.x_root-x,event.y_root-y
             if abs(dx)+abs(dy)>5:
+                self.cancel_pending_click()
+                self.double_click = False
                 self.dragged = True
+                next_x,next_y = max(0,wx+dx),max(0,wy+dy)
                 if self.drag_start[4]:
                     if self.interaction != 'drag':
                         self.react('drag')
                     self.drag_angle = max(-12,min(12,dx/6))
-                self.root.geometry(f'+{max(0,wx+dx)}+{max(0,wy+dy)}')
+                    self.audio.drag_distance(math.hypot(next_x-wx,next_y-wy),
+                                             self.animation.revision)
+                self.root.geometry(f'+{next_x}+{next_y}')
 
     def release(self, event):
         self.animation.release(time.monotonic())
         if self.drag_start:
             if self.drag_start[4] and not self.dragged:
-                self.click_count += 1
-                self.react('pout' if self.click_count%3 == 0 else 'click')
-                self.expanded = not self.expanded
-                self.draw()
+                if self.double_click:
+                    self.react('pat')
+                else:
+                    self.pending_click = (event.x_root,event.y_root,time.monotonic())
+                    self.click_timer = self.root.after(300,self.finish_single_click)
             elif self.drag_start[4] and self.dragged:
                 self.react('land')
             self.save()
         self.drag_start = None
+        self.double_click = False
+
+    def cancel_pending_click(self):
+        if self.click_timer is not None:
+            self.root.after_cancel(self.click_timer)
+        self.click_timer = None
+        self.pending_click = None
+
+    def finish_single_click(self):
+        pending = self.pending_click
+        self.cancel_pending_click()
+        if not pending or self.closed:
+            return
+        self.click_count += 1
+        self.react('pout' if self.click_count%3 == 0 else 'click')
+        self.expanded = not self.expanded
+        self.draw()
+        self.save()
 
     def cancel_drag(self):
+        self.cancel_pending_click()
+        self.double_click = False
         self.animation.cancel(time.monotonic())
         if self.drag_start:
             self.drag_start = None
@@ -797,11 +849,14 @@ class Companion:
         self.save()
 
     def menu(self, event):
+        self.cancel_pending_click()
         self.animation.touch(time.monotonic())
         menu = tk.Menu(self.root, tearoff=False)
-        menu.add_command(label='摸摸头 · 眨眼挥手', command=lambda: self.react('click'))
+        menu.add_command(label='摸摸头 · 开心轻笑', command=lambda: self.react('pat'))
         menu.add_command(label='逗一下 · 鼓脸', command=lambda: self.react('pout'))
         menu.add_command(label='开心跳一跳', command=lambda: self.react('land'))
+        menu.add_command(label='关闭语气音效' if self.audio.enabled else '开启语气音效',
+                         command=self.toggle_sound)
         menu.add_separator()
         menu.add_command(label='收起气泡' if self.expanded else '展开重置时间', command=self.toggle)
         menu.add_command(label='重新读取账户快照', command=lambda: setattr(self,'last_read',0))
@@ -825,7 +880,8 @@ class Companion:
 
     def save(self):
         try:
-            write_json(self.settings, {'x': self.root.winfo_x(),'y': self.root.winfo_y(),'expanded': self.expanded})
+            write_json(self.settings, {'x': self.root.winfo_x(),'y': self.root.winfo_y(),
+                                      'expanded': self.expanded,'sound_enabled':self.audio.enabled})
         except OSError:
             pass
 
@@ -835,13 +891,19 @@ class Companion:
             self.root.attributes('-transparentcolor',TRANSPARENT)
         self.root.overrideredirect(True)
 
+    def toggle_sound(self):
+        self.audio.set_enabled(not self.audio.enabled)
+        self.save()
+
     def close(self, reason='programmatic'):
         if self.closed:
             return
         logging.info('Desktop close requested: reason=%s', reason)
         self.close_reason = reason
         self.closed = True
+        self.cancel_pending_click()
         self.refresh_cancel.set()
+        self.audio.close()
         try:
             self.write_runtime()
         except Exception:

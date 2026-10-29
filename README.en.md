@@ -177,6 +177,12 @@ Manual refreshes use a separate `desktop-usage.json` cache and do not overwrite 
 
 ## Documentation and maintenance
 
+Unreleased source adds original nonverbal synthesized sounds for taps, pouts, pickup, landing, and waking. Entering sleep plays one three-second clip without looping. Idle animations and background refreshes remain silent. Right-click the pet to mute; the preference is saved. No additional audio runtime dependency is required.
+
+An optional personal Amitaro recording pack is supported in `voice-amitaro` beside the settings file. A complete pack and manifest enable it automatically, with attribution in the README and voice documentation. Attribution is not shown on the desktop or in the context menu. Third-party recordings are not distributed in this repository or installer. See [voice notes and credits](docs/voice-credits.md).
+
+Each expression uses distinct rhythm, resonance, and breathiness. Moving the pet at least 180 screen pixels from the drag origin triggers one cheerful three-part chuckle per gesture. An immediate release keeps the chuckle playing while the landing animation proceeds normally.
+
 Unreleased source fixes launcher lifetime coupling: use `start.ps1` to launch through the local Windows process creation interface, so launcher job cleanup does not terminate the pet. Runtime diagnostics update every 30 seconds, and explicit closes record their reason. Check `desktop-launcher.log` in the data directory if startup fails.
 
 Unreleased source: right-click the pet → 临期重置卡自动使用 to opt into either 16–6 minutes before expiration or the last 5 minutes. It binds to the signed-in account, requires fresh details and exact credit selection, and preserves an idempotency key across retries. It is off by default. It cannot execute while the pet is closed or the computer is asleep, and missed windows are skipped.
@@ -200,3 +206,9 @@ python scripts/build_release.py
 ```
 
 The 90 tests cover animation state transitions, countdowns, reset-credit filtering, notification deduplication, connection failures and recovery, timeouts, cancellation, malformed responses, save failures, Tibo forecast parsing, and native Windows layout and refresh regression. Native-window integration tests are skipped on non-Windows systems. See the [failure-handling test report (Chinese)](docs/异常处理测试.md). The release package and checksum file are written to `dist/`. Packaging uses an explicit file allowlist to exclude runtime data and caches.
+
+Double-click the pet to pat its head and play a gentle laugh; the context menu also offers this action. Two nearby taps within 300 ms trigger one head pat without toggling the bubble or counting toward the every-third-tap pout. Single taps wait 300 ms; dragging responds immediately.
+
+## Voice credits
+
+The optional personal recording pack uses voices by **Amitaro’s Voice Material Studio — あみたろの声素材工房** ([official website](https://amitaro.net/)). Thank you to the creator for providing these recordings. They are governed by the [author’s terms](https://amitaro.net/voice/terms/), not this project’s source license. Third-party recordings are not included in the repository or installer; the default sounds are synthesized for this project. See [voice notes and credits](docs/voice-credits.md) for the clip mapping.
