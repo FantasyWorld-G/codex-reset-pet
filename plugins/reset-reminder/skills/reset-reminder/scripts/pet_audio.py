@@ -1,10 +1,10 @@
 """Single-channel asynchronous nonverbal audio tied to animation transitions."""
 import logging
-import json
 import os
 from pathlib import Path
 import time
 import wave
+from voice_pack import validate_pack
 
 
 class PetAudio:
@@ -17,14 +17,11 @@ class PetAudio:
         if personal_assets is not None:
             personal = Path(personal_assets)
             try:
-                metadata = json.loads((personal/'manifest.json').read_text('utf-8'))
-                names = ('click_1','click_2','pout','drag','drag_happy','land','sleep','wake')
-                if metadata.get('provider') != 'amitaro' or not all((personal/(n+'.wav')).is_file() for n in names):
-                    raise ValueError('Incomplete personal voice pack')
+                validate_pack(personal)
                 self.assets, self.provider = personal, 'amitaro'
             except FileNotFoundError:
                 pass
-            except (OSError, ValueError, TypeError, AttributeError):
+            except (OSError, ValueError, TypeError, AttributeError, wave.Error, EOFError):
                 logging.exception('Personal voice pack unavailable; using bundled sounds')
         try:
             with wave.open(str(self.assets/'drag_happy.wav'), 'rb') as clip:

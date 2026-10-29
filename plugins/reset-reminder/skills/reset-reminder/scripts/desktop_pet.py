@@ -948,7 +948,7 @@ def main():
         if sys.stderr is None:
             sys.stderr = crash_log
         faulthandler.enable(file=crash_log)
-        logging.info('Desktop companion 0.4.5 starting, pid=%s',os.getpid())
+        logging.info('Desktop companion 0.4.6 starting, pid=%s',os.getpid())
         app = Companion(args.usage,args.settings,args.windowed)
         app.root.mainloop()
         logging.info('Desktop companion closed normally')

@@ -13,12 +13,12 @@ This is an independent local desktop application and Codex skill plugin, not an 
 
 ## Install through Codex (plugin first)
 
-Current version: **v0.4.5**. For first-time setup, run these two steps in **PowerShell or Codex's PowerShell terminal**.
+Current version: **v0.4.6**. For first-time setup, run these two steps in **PowerShell or Codex's PowerShell terminal**.
 
 **1. Install the companion plugin** (skip if already installed):
 
 ```powershell
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.5
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.6
 codex plugin add reset-reminder@codex-reset-pet
 ```
 
@@ -26,7 +26,7 @@ codex plugin add reset-reminder@codex-reset-pet
 
 ```powershell
 $file = "$env:TEMP\codex-reset-pet-install.ps1"
-Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.5/install.ps1' -OutFile $file
+Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.6/install.ps1' -OutFile $file
 powershell -NoProfile -ExecutionPolicy Bypass -File $file -SkipPlugin
 ```
 
@@ -50,6 +50,7 @@ Or double-click the **Codex Reset Pet** desktop shortcut. Launching makes no AI 
 | `codex-pet status` | Check whether it is running |
 | `codex-pet version` | Show installed version |
 | `codex-pet help` | Show command help |
+| `codex-pet sounds` | Show configured audio, its location, and running mute status |
 
 If the command is not found, fully close and reopen your terminal app; embedded terminals may require restarting Codex. To quit the pet, use its right-click menu.
 
@@ -64,6 +65,19 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $file
 ```
 
 This installs and launches the latest stable release while preserving account snapshots, settings, and personal audio. Reuse these commands for future updates without changing a version number. For desktop-only installations, append `-SkipPlugin` to the final line; for a custom directory, append `-InstallRoot 'original installation directory'`.
+
+## Use the same personal voices on another device
+
+**Updating the app does not install Amitaro recordings.** Synthesized audio is bundled by default; personal recordings are stored separately and preserved by updates.
+
+Update to v0.4.6 or later, quit the pet, and copy your existing `%LOCALAPPDATA%\CodexResetPet\data\voice-amitaro` folder from your original device to the other device. Then run (replace the example path):
+
+```powershell
+codex-pet sounds "D:\voice-amitaro"
+codex-pet
+```
+
+Copy only the voice folder, not account data. If you do not have a prepared pack, download the six originals manually from the author's page and import that folder using the same command. See [files, steps, and terms](docs/voice-credits.md#安装与跨设备迁移--install-and-transfer).
 
 ## First account sync
 

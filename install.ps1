@@ -8,7 +8,7 @@ param(
     [switch]$NoPath
 )
 $ErrorActionPreference = 'Stop'
-$Version = '0.4.5'
+$Version = '0.4.6'
 $Repository = 'FantasyWorld-G/codex-reset-pet'
 $InstallRoot = [IO.Path]::GetFullPath($InstallRoot)
 $appRoot = Join-Path $InstallRoot ('app/'+$Version)
@@ -114,6 +114,7 @@ try {
     $info = @{version=$Version;appRoot=$appRoot;dataDir=$dataRoot;pythonw=$pythonw;pluginInstalled=$pluginInstalled}
     [IO.File]::WriteAllText((Join-Path $InstallRoot 'install.json'),($info | ConvertTo-Json),[Text.UTF8Encoding]::new($false))
     & (Join-Path $appRoot 'scripts/register_command.ps1') -InstallRoot $InstallRoot -NoPath:$NoPath
+    Write-Host 'Audio: bundled synthesized sounds by default; personal recordings are separate. Check with: codex-pet sounds'
     if (-not $NoLaunch) { & $startScript -DataDir $dataRoot -PythonExe $pythonw }
     Write-Host "Installed $Version at $appRoot"
     Write-Host "Account snapshot directory: $dataRoot"

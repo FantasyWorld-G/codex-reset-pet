@@ -1,12 +1,14 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('start','status','version','help')]
-    [string]$Action = 'start'
+    [ValidateSet('start','status','version','help','sounds')]
+    [string]$Action = 'start',
+    [string]$Source
 )
 $ErrorActionPreference = 'Stop'
 try {
     if ($Action -eq 'help') {
-        Write-Output 'codex-pet [start|status|version|help]'
+        Write-Output 'codex-pet [start|status|version|help|sounds]'
+        Write-Output 'codex-pet sounds [voice-folder] - inspect or import personal voices offline'
         Write-Output 'Start the installed desktop pet locally, without an AI request.'
         exit 0
     }
@@ -16,6 +18,7 @@ try {
         throw 'Desktop installation not found. Run install.ps1 first.'
     }
     $info = Get-Content -Raw -Encoding UTF8 -LiteralPath $record | ConvertFrom-Json
+    if ($Source -and $Action -ne 'sounds') { throw 'A source folder is only supported with: codex-pet sounds [voice-folder]' }
     if ($Action -eq 'version') { Write-Output $info.version; exit 0 }
     $petScript = Join-Path $info.appRoot 'plugins/reset-reminder/skills/reset-reminder/scripts/desktop_pet.py'
     $settings = Join-Path $info.dataDir 'desktop-settings.json'
@@ -47,7 +50,21 @@ try {
     try {
         try { $ownsMutex = $mutex.WaitOne(0) }
         catch [Threading.AbandonedMutexException] { $ownsMutex = $true }
-        if (-not $ownsMutex) { Write-Output 'Startup is already in progress.'; exit 0 }
+        if (-not $ownsMutex) { throw 'Another start or voice import is in progress; retry shortly.' }
+        if ($Action -eq 'sounds') {
+            if ($Source -and (Find-RunningPet)) { throw 'Exit the pet using its right-click menu before importing voices, then retry.' }
+            $python = Join-Path (Split-Path $info.pythonw -Parent) 'python.exe'
+            $voiceScript = Join-Path $info.appRoot 'plugins/reset-reminder/skills/reset-reminder/scripts/voice_pack.py'
+            $voiceArgs = @('-X','utf8',$voiceScript,'--data-dir',$info.dataDir)
+            if ($Source) { $voiceArgs += @('--source',$Source) }
+            & $python @voiceArgs
+            $voiceExit = $LASTEXITCODE
+            if (-not $Source -and (Find-RunningPet)) {
+                $runtime = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $info.dataDir 'desktop-runtime.json') | ConvertFrom-Json
+                Write-Output "Running pet: sound_pack=$($runtime.sound_pack), sound_enabled=$($runtime.sound_enabled)"
+            }
+            exit $voiceExit
+        }
         $running = Find-RunningPet
         if ($running) { Write-Output "Already running (PID $($running.ProcessId))"; exit 0 }
         $startScript = Join-Path $info.appRoot 'start.ps1'

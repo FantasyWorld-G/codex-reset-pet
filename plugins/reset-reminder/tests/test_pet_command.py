@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -40,20 +41,20 @@ $settings = Join-Path $DataDir 'desktop-settings.json'
 @{ProcessId=1234;Name='pythonw.exe';CommandLine=($script+' --settings '+$settings)} | ConvertTo-Json | Set-Content (Join-Path $DataDir 'process.json')
 ''', 'utf-8')
         self.harness = self.root/'harness.ps1'
-        self.harness.write_text('''param($Entry,$Action,$DataDir)
+        self.harness.write_text('''param($Entry,$Action,$DataDir,$Source)
 function Get-CimInstance {
     param($ClassName,$Filter,$ErrorAction)
     $file = Join-Path $DataDir 'process.json'
     if (Test-Path $file) { Get-Content -Raw $file | ConvertFrom-Json }
 }
-& $Entry $Action
+if ($Source) { & $Entry $Action $Source } else { & $Entry $Action }
 exit $LASTEXITCODE
 ''', 'utf-8')
 
-    def run_command(self, action='start', expected=0):
+    def run_command(self, action='start', expected=0, source=None):
         result = subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass',
             '-File',str(self.harness),'-Entry',str(self.bin/'codex-pet.ps1'),'-Action',action,
-            '-DataDir',str(self.data)],capture_output=True,text=True,timeout=20)
+            '-DataDir',str(self.data)]+(['-Source',str(source)] if source else []),capture_output=True,text=True,timeout=20)
         self.assertEqual(result.returncode, expected, result.stdout+result.stderr)
         return result.stdout+result.stderr
 
@@ -80,6 +81,27 @@ exit $LASTEXITCODE
         self.assertIn('0.4.5',self.run_command('version'))
         self.assertIn('Stopped',self.run_command('status'))
         self.assertFalse((self.data/'launch-count.txt').exists())
+
+    def test_sounds_import_real_python_with_spaces_and_running_guard(self):
+        scripts = ROOT/'plugins/reset-reminder/skills/reset-reminder/scripts'
+        sys.path.insert(0, str(scripts))
+        import voice_pack
+        shutil.copyfile(scripts/'voice_pack.py', self.script.parent/'voice_pack.py')
+        info = json.loads((self.root/'install.json').read_text())
+        info['pythonw'] = str(Path(sys.executable).with_name('pythonw.exe'))
+        (self.root/'install.json').write_text(json.dumps(info))
+        self.assertIn('original-synthesis', self.run_command('sounds'))
+        self.assertFalse((self.data/'launch-count.txt').exists())
+        source = self.root/'personal voice folder'
+        source.mkdir()
+        (source/'manifest.json').write_text('{"provider":"amitaro"}')
+        for name in voice_pack.NAMES:
+            voice_pack.write_pcm(source/(name+'.wav'), [1000]*4410)
+        self.assertIn('Installed Amitaro', self.run_command('sounds', source=source))
+        self.assertIn('amitaro (8 clips)', self.run_command('sounds'))
+        self.assertIn('failed', self.run_command('sounds', source=self.root/'missing', expected=1))
+        self.run_command('start')
+        self.assertIn('Exit the pet', self.run_command('sounds', source=source, expected=1))
 
 
 if __name__ == '__main__':

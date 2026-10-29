@@ -13,12 +13,12 @@ Windows 桌面常驻小精灵，显示 **Codex 账户额度重置** 与 **重置
 
 ## 通过 Codex 安装（优先入口）
 
-当前版本 **v0.4.5**。首次安装，在 **PowerShell 或 Codex 的 PowerShell 终端**依次执行两步。
+当前版本 **v0.4.6**。首次安装，在 **PowerShell 或 Codex 的 PowerShell 终端**依次执行两步。
 
 **1. 安装配套插件**（已安装可跳过）：
 
 ```powershell
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.5
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.6
 codex plugin add reset-reminder@codex-reset-pet
 ```
 
@@ -26,7 +26,7 @@ codex plugin add reset-reminder@codex-reset-pet
 
 ```powershell
 $file = "$env:TEMP\codex-reset-pet-install.ps1"
-Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.5/install.ps1' -OutFile $file
+Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.6/install.ps1' -OutFile $file
 powershell -NoProfile -ExecutionPolicy Bypass -File $file -SkipPlugin
 ```
 
@@ -50,6 +50,7 @@ codex-pet
 | `codex-pet status` | 查看是否运行 |
 | `codex-pet version` | 查看安装版本 |
 | `codex-pet help` | 查看命令帮助 |
+| `codex-pet sounds` | 查看音效来源、位置与运行时静音状态 |
 
 提示找不到命令时，完全退出并重新打开终端应用；Codex 内置终端可能需要重启 Codex。退出小精灵请使用人物右键菜单。
 
@@ -64,6 +65,19 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $file
 ```
 
 自动安装最新稳定版并启动，保留账户快照、设置和个人音效。以后仍使用这组命令，无需手动改版本号。只安装桌面的用户在最后一行加 `-SkipPlugin`；自定义目录加 `-InstallRoot '原安装目录'`。
+
+## 使用这台电脑同款语气音
+
+**更新程序不会自动安装 Amitaro 录音。** 默认包为合成音；个人录音单独保存在本机，更新会保留它。
+
+在另一台设备使用同款音效：先更新至 v0.4.6 或以上，退出小精灵，将原设备的 `%LOCALAPPDATA%\CodexResetPet\data\voice-amitaro` 文件夹复制到新设备，再执行（替换示例路径）：
+
+```powershell
+codex-pet sounds "D:\voice-amitaro"
+codex-pet
+```
+
+只复制音效文件夹，无需复制账户信息。没有现成音效时，先从作者页面手动下载六段录音，再用同一命令导入；[素材列表、步骤及使用条款](docs/voice-credits.md#安装与跨设备迁移--install-and-transfer)。
 
 ## 第一次同步账户
 
