@@ -16,12 +16,12 @@ Windows 桌面常驻小精灵，显示 **Codex 账户额度重置** 与 **重置
 首次安装时，在 PowerShell 或 Codex 的终端中按顺序执行下面整组命令；完成后会自动启动小精灵：
 
 ```powershell
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.4
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.5
 codex plugin add reset-reminder@codex-reset-pet
 codex plugin list --marketplace codex-reset-pet
 
 # 安装桌面小精灵并立即启动（配套插件已在上面安装）
-$f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.4/install.ps1' -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f -SkipPlugin
+$f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.5/install.ps1' -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f -SkipPlugin
 ```
 
 前三行安装 Codex 查询和提醒插件，最后一行安装桌面程序、Python/Pillow 依赖并自动启动小精灵，同时创建桌面快捷方式。`-SkipPlugin` 仅跳过重复注册插件，不会跳过桌面安装或启动。只需要插件时执行前三行即可。安装后新建 Codex 聊天同步账户；首次尚无账户数据也会显示小精灵及“等待同步”。
@@ -30,27 +30,27 @@ $f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBa
 
 ## 桌面宠物一键安装
 
-在 **PowerShell** 中复制运行下面这一行（固定安装 v0.4.4）：
+在 **PowerShell** 中复制运行下面这一行（固定安装 v0.4.5）：
 
-**v0.4.4 已包含双击摸头、互动语气音、拖远开心反馈、Tibo 预估与历史、独立启动修复，以及默认关闭的临期用卡选项。** 保留剩余额度、刷新按钮和倒计时颜色；已安装用户请执行下方更新命令。第三方真人录音不随安装包分发，默认使用项目合成音效。
+**v0.4.5 已包含双击摸头、互动语气音、拖远开心反馈、Tibo 预估与历史、独立启动修复，以及默认关闭的临期用卡选项。** 保留剩余额度、刷新按钮和倒计时颜色；已安装用户请执行下方更新命令。第三方真人录音不随安装包分发，默认使用项目合成音效。
 
 ```powershell
-$f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.4/install.ps1' -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f
+$f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.5/install.ps1' -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f
 ```
 
 安装脚本会下载发布包并核对 SHA-256，检测 Python，必要时通过 winget 安装当前用户的 Python 3.12，在独立虚拟环境安装 Pillow，创建桌面快捷方式，然后启动小精灵。检测到 Codex CLI 时，也会安装配套插件。无需 Git；通常无需管理员权限。首次运行需要连接 GitHub、PyPI；缺少 Python 时还需要 winget 软件源。
 
-安装位置：`%LOCALAPPDATA%\CodexResetPet`。不会自动建立定时任务或开机自启，也不会读取你的登录凭证。可先查看 [安装脚本](install.ps1)，或从 [Release](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.4) 手动下载。
+安装位置：`%LOCALAPPDATA%\CodexResetPet`。不会自动建立定时任务或开机自启，也不会读取你的登录凭证。可先查看 [安装脚本](install.ps1)，或从 [Release](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.5) 手动下载。
 
 ## 其他安装方式
 
 ### 手动下载发布包（无需 Git）
 
-从 [v0.4.4 Release](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.4) 下载 `codex-reset-pet-v0.4.4.zip` 和 `SHA256SUMS.txt`。将两者放在同一目录，运行下面的校验命令；仅在校验通过后解压，并在解压后的 `codex-reset-pet` 目录运行安装器。
+从 [v0.4.5 Release](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.5) 下载 `codex-reset-pet-v0.4.5.zip` 和 `SHA256SUMS.txt`。将两者放在同一目录，运行下面的校验命令；仅在校验通过后解压，并在解压后的 `codex-reset-pet` 目录运行安装器。
 
 ```powershell
-$archive = (Resolve-Path '.\codex-reset-pet-v0.4.4.zip').Path
-$expected = ((Get-Content '.\SHA256SUMS.txt' | Where-Object { $_ -match '\s+codex-reset-pet-v0\.4\.4\.zip$' }) -split '\s+')[0]
+$archive = (Resolve-Path '.\codex-reset-pet-v0.4.5.zip').Path
+$expected = ((Get-Content '.\SHA256SUMS.txt' | Where-Object { $_ -match '\s+codex-reset-pet-v0\.4\.5\.zip$' }) -split '\s+')[0]
 $sha256 = [Security.Cryptography.SHA256]::Create()
 $archiveStream = [IO.File]::OpenRead($archive)
 try { $actual = ([BitConverter]::ToString($sha256.ComputeHash($archiveStream))).Replace('-','') }
@@ -69,7 +69,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath .
 需要已安装 Git。在准备保存源码的目录运行：
 
 ```powershell
-git clone --branch v0.4.4 --depth 1 https://github.com/FantasyWorld-G/codex-reset-pet.git
+git clone --branch v0.4.5 --depth 1 https://github.com/FantasyWorld-G/codex-reset-pet.git
 Set-Location codex-reset-pet
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath .
 ```
@@ -105,19 +105,19 @@ $f = Join-Path $env:TEMP 'codex-reset-pet-update.ps1'; Invoke-WebRequest -UseBas
 
 自定义安装目录的用户，在最后的命令末尾添加 `-InstallRoot 'D:\Apps\CodexResetPet'`，路径必须和原安装位置一致。仅安装桌面程序时可加 `-SkipPlugin`；暂不启动可加 `-NoLaunch`，不创建快捷方式可加 `-NoShortcut`。从源码目录直接运行的用户，应更新源码，或用 `install.ps1 -SourcePath .` 安装；本更新器面向安装器管理的目录。
 
-更新后版本应为 `0.4.4`，双击人物可触发摸头，右键可开关语气音效。旧聊天可能仍使用插件缓存，插件更新后请开启新聊天。
+更新后版本应为 `0.4.5`，双击人物可触发摸头，右键可开关语气音效。旧聊天可能仍使用插件缓存，插件更新后请开启新聊天。
 
 ### 仅更新 Codex 插件
 
-适用于按上方命令添加的 Git 市场。将固定版本切换到 v0.4.4：
+适用于按上方命令添加的 Git 市场。将固定版本切换到 v0.4.5：
 
 ```powershell
 codex plugin marketplace remove codex-reset-pet
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.4
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.5
 codex plugin add reset-reminder@codex-reset-pet
 ```
 
-以后升级时将 `v0.4.4` 替换为已发布的新标签。若你的 Git 市场明确跟踪 `main`，可改用下面两条；固定标签执行 `upgrade` 不会自动跳到新版本：
+以后升级时将 `v0.4.5` 替换为已发布的新标签。若你的 Git 市场明确跟踪 `main`，可改用下面两条；固定标签执行 `upgrade` 不会自动跳到新版本：
 
 ```powershell
 codex plugin marketplace upgrade codex-reset-pet
@@ -127,6 +127,16 @@ codex plugin add reset-reminder@codex-reset-pet
 如果由桌面安装器注册的是本地市场，请使用前面的桌面更新命令。仅更新插件不会升级桌面文件；完成后新建 Codex 聊天。[官方市场命令说明](https://learn.chatgpt.com/docs/cli/reference)。
 
 ## 再次启动与检查版本
+
+安装后重新打开终端，输入下面这一条即可启动，无需调用 Codex AI：
+
+```powershell
+codex-pet
+```
+
+`codex-pet start` 同样可用，`codex-pet status` 查看运行状态，`codex-pet version` 查看版本。已运行时不会重复打开。此命令属于本项目，不是 `codex` 的子命令；启动本身无需联网或模型额度，账户刷新和 Tibo 查询仍需网络。
+
+安装器会将安装目录的 `bin` 追加到当前用户 PATH。现有终端可能需要完全关闭后重新打开（包括 Codex 内置终端的宿主应用）。不想修改 PATH 时，安装或更新加 `-NoPath`，之后通过桌面快捷方式启动，或执行 `& "$env:LOCALAPPDATA\CodexResetPet\bin\codex-pet.cmd"`；自定义安装则替换为对应目录。
 
 双击桌面快捷方式即可。也可读取安装记录启动，不需要写死版本目录：
 
@@ -149,7 +159,7 @@ codex plugin list --marketplace codex-reset-pet
 
 > 使用 reset-reminder 插件，把我的账户额度重置和重置卡到期信息同步到已安装的桌面小精灵，只同步一次，不创建定时任务。
 
-首次同步之前，窗口显示“等待账户同步”，不会带入发布者的账户信息。v0.4.4 也可点击“刷新”，通过已登录的 Codex CLI 获取额度和重置时间；重置卡到期明细仍需完整账户同步。
+首次同步之前，窗口显示“等待账户同步”，不会带入发布者的账户信息。v0.4.5 也可点击“刷新”，通过已登录的 Codex CLI 获取额度和重置时间；重置卡到期明细仍需完整账户同步。
 
 想自动同步时，再单独告诉 Codex：
 
@@ -169,7 +179,7 @@ codex plugin list --marketplace codex-reset-pet
 | 睡眠时点击或拖动 | 唤醒并响应操作；按住期间不会入睡 |
 | 点击“刷新” | 从已登录的 Codex CLI 获取最新额度和重置时间，过程中不阻塞动画 |
 | 点击 `tibo reset` | 默认浏览器打开 [Tibo 页面](https://codex-reset.com/zh/tibo) |
-| 点击 `更新预估`（v0.4.4 功能） | 立即更新第三张卡片的 Tibo 网站预告 |
+| 点击 `更新预估`（v0.4.5 功能） | 立即更新第三张卡片的 Tibo 网站预告 |
 | 点击气泡的 × | 只收起气泡 |
 | 右键人物 → 退出桌面小精灵 | 退出程序 |
 
@@ -181,25 +191,25 @@ codex plugin list --marketplace codex-reset-pet
 
 ## 说明书和维护
 
-v0.4.4 新增非语言合成语气音：点击、鼓脸、提起、落地和唤醒各有短音，入睡只播放一次 3 秒音效。待机及后台刷新保持安静；右键人物可关闭音效，设置会保存。无需额外音频依赖。
+v0.4.5 新增非语言合成语气音：点击、鼓脸、提起、落地和唤醒各有短音，入睡只播放一次 3 秒音效。待机及后台刷新保持安静；右键人物可关闭音效，设置会保存。无需额外音频依赖。
 
 另支持本机个人 Amitaro 录音包：放在设置文件同目录的 `voice-amitaro` 文件夹，完整素材和清单齐备时自动启用，署名统一保留在 README 和素材说明中，桌面及右键菜单不显示署名。第三方录音不随仓库或安装包分发；使用与署名说明见 [语气音说明](docs/voice-credits.md)。
 
 语气通过节奏、鼻音、开口音和气声区分。拖拽人物离起点达到 180 像素会额外触发一次开心短笑，每次拖拽只触发一次；立即松手也会保留正在播放的短笑，落地动画照常执行。
 
-v0.4.4 修复了启动生命周期绑定：请通过 `start.ps1` 启动，程序由 Windows 本机进程创建接口独立启动，避免随启动器任务组清理而退出。运行状态每 30 秒记录心跳，主动关闭记录退出原因；启动失败可查看数据目录中的 `desktop-launcher.log`。
+v0.4.5 修复了启动生命周期绑定：请通过 `start.ps1` 启动，程序由 Windows 本机进程创建接口独立启动，避免随启动器任务组清理而退出。运行状态每 30 秒记录心跳，主动关闭记录退出原因；启动失败可查看数据目录中的 `desktop-launcher.log`。
 
-v0.4.4 支持右键人物 →“临期重置卡自动使用”：选择到期前 16–6 分钟，或前 5 分钟至到期。默认关闭，开启时绑定当前账户；只使用实时核对且临近到期的具体卡片。精灵关闭、电脑休眠或断网时无法保证执行；错过窗口不补用。
+v0.4.5 支持右键人物 →“临期重置卡自动使用”：选择到期前 16–6 分钟，或前 5 分钟至到期。默认关闭，开启时绑定当前账户；只使用实时核对且临近到期的具体卡片。精灵关闭、电脑休眠或断网时无法保证执行；错过窗口不补用。
 
-v0.4.4 另有“上次 Tibo 重置”卡片，显示最近重置时间、确认状态、网站公告说明和网站分类，点击说明可展开详情，也可点击“查看原帖”。网站分类仅供参考；历史和预估一起更新。
+v0.4.5 另有“上次 Tibo 重置”卡片，显示最近重置时间、确认状态、网站公告说明和网站分类，点击说明可展开详情，也可点击“查看原帖”。网站分类仅供参考；历史和预估一起更新。
 
-**v0.4.4 功能：**新增独立的“Tibo 预计重置”卡片，精灵启动时和运行期间每 5 分钟读取网站公开预估，也可点击“更新预估”。明确公告目标显示北京时间、倒计时和临近颜色；无目标显示“暂无明确预告”，不从概率推算日期。断网保留缓存并标注失败，超过 1 小时标注过期。不会发送账户数据或启用 Codex 定时任务；网站观测不代表本账户已到账。此功能已包含在 v0.4.4 发布包中。
+**v0.4.5 功能：**新增独立的“Tibo 预计重置”卡片，精灵启动时和运行期间每 5 分钟读取网站公开预估，也可点击“更新预估”。明确公告目标显示北京时间、倒计时和临近颜色；无目标显示“暂无明确预告”，不从概率推算日期。断网保留缓存并标注失败，超过 1 小时标注过期。不会发送账户数据或启用 Codex 定时任务；网站观测不代表本账户已到账。此功能已包含在 v0.4.5 发布包中。
 
 - [完整说明书：数据同步、安装参数、更新、卸载及故障排查](docs/使用说明.md)
 - [版本记录](CHANGELOG.md)
 - [素材生成说明](plugins/reset-reminder/assets/生成说明.txt)
 
-本仓库只包含程序、测试和角色素材，不包含账户快照、凭证、日志或个人定时任务。社区消息分为预告、待核实、社区确认和储备重置；社区确认不等于本人账户已到账。默认不自动使用重置卡；v0.4.4 新增需要主动开启的临期自动使用，详见说明书。
+本仓库只包含程序、测试和角色素材，不包含账户快照、凭证、日志或个人定时任务。社区消息分为预告、待核实、社区确认和储备重置；社区确认不等于本人账户已到账。默认不自动使用重置卡；v0.4.5 新增需要主动开启的临期自动使用，详见说明书。
 
 ## 开发与测试
 

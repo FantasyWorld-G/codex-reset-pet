@@ -1,6 +1,6 @@
 {
   "name": "reset-reminder",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "查询 Codex 账户重置倒计时，追踪 Tibo 重置预告与确认，并设置去重提醒。",
   "skills": "./skills/",
   "requires_local_executor": true,

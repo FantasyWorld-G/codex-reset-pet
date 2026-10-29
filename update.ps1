@@ -3,7 +3,8 @@ param(
     [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'CodexResetPet'),
     [switch]$NoLaunch,
     [switch]$NoShortcut,
-    [switch]$SkipPlugin
+    [switch]$SkipPlugin,
+    [switch]$NoPath
 )
 $ErrorActionPreference = 'Stop'
 $Repository = 'FantasyWorld-G/codex-reset-pet'
@@ -24,6 +25,7 @@ try {
     if ($NoLaunch) { $installerArguments += '-NoLaunch' }
     if ($NoShortcut) { $installerArguments += '-NoShortcut' }
     if ($SkipPlugin) { $installerArguments += '-SkipPlugin' }
+    if ($NoPath) { $installerArguments += '-NoPath' }
     & powershell.exe @installerArguments
     if ($LASTEXITCODE -ne 0) { throw "Update failed (installer exit code $LASTEXITCODE). Existing account data is retained; retry after fixing the reported error." }
     Write-Host "Updated to $tag. Click Refresh to read your latest quota."

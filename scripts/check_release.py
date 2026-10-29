@@ -21,6 +21,7 @@ def check_release():
         assert all(pin == version for pin in pins), f'{name}: stale desktop installation target'
         assert 'main/update.ps1' in text, f'{name}: missing latest stable updater command'
         assert '-InstallRoot' in text and '-SkipPlugin' in text, f'{name}: missing alternate installation options'
+        assert 'codex-pet status' in text and '-NoPath' in text, f'{name}: missing command startup instructions'
     for name in ('README.md', 'README.en.md'):
         headings = re.findall(r'^## (.+)$', (ROOT/name).read_text('utf-8'), re.M)
         assert 'Codex' in headings[0], f'{name}: keep Codex installation first'

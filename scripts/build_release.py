@@ -10,6 +10,7 @@ check_release()
 ROOT = Path(__file__).resolve().parents[1]
 version = json.loads((ROOT/'plugins/reset-reminder/.codex-plugin/plugin.json').read_text('utf-8'))['version']
 files = [ROOT/name for name in ('README.md','README.en.md','CHANGELOG.md','requirements.txt','install.ps1','update.ps1','start.ps1',
+                               'codex-pet.cmd','codex-pet.ps1',
                                '.agents/plugins/marketplace.json')]
 for directory in ('docs','plugins','scripts'):
     files.extend(p for p in (ROOT/directory).rglob('*') if p.is_file() and

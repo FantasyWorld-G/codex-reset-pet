@@ -23,8 +23,8 @@ function Invoke-WebRequest {
     $script:downloaded=$OutFile
     if ($Case -eq 'download-fail') { throw 'Download failed' }
     $stub=@'
-param([string]$InstallRoot,[switch]$NoLaunch,[switch]$NoShortcut,[switch]$SkipPlugin)
-$result=@{root=$InstallRoot;noLaunch=[bool]$NoLaunch;noShortcut=[bool]$NoShortcut;skipPlugin=[bool]$SkipPlugin}
+param([string]$InstallRoot,[switch]$NoLaunch,[switch]$NoShortcut,[switch]$SkipPlugin,[switch]$NoPath)
+$result=@{root=$InstallRoot;noLaunch=[bool]$NoLaunch;noShortcut=[bool]$NoShortcut;skipPlugin=[bool]$SkipPlugin;noPath=[bool]$NoPath}
 [IO.File]::WriteAllText((Join-Path $InstallRoot 'arguments.json'),($result | ConvertTo-Json))
 if (Test-Path -LiteralPath (Join-Path $InstallRoot 'fail-installer')) { exit 7 }
 exit 0
@@ -32,7 +32,7 @@ exit 0
     [IO.File]::WriteAllText($OutFile,$stub)
 }
 $failed=$false
-try { & $Updater -InstallRoot $InstallRoot -NoLaunch -NoShortcut -SkipPlugin }
+try { & $Updater -InstallRoot $InstallRoot -NoLaunch -NoShortcut -SkipPlugin -NoPath }
 catch { $failed=$true }
 if (($Case -eq 'success') -eq $failed) { throw 'Unexpected updater outcome' }
 if ($script:downloaded -and (Test-Path -LiteralPath $script:downloaded)) { throw 'Temporary installer leaked' }
@@ -60,7 +60,7 @@ class UpdaterTests(unittest.TestCase):
                 args=json.loads((folder/'arguments.json').read_text())
                 # PowerShell expands Windows short names (RUNNER~1) to long paths.
                 self.assertTrue(os.path.samefile(args['root'], directory))
-                self.assertTrue(all(args[k] for k in ('noLaunch','noShortcut','skipPlugin')))
+                self.assertTrue(all(args[k] for k in ('noLaunch','noShortcut','skipPlugin','noPath')))
             else:self.assertFalse((folder/'arguments.json').exists())
 
     def test_success_preserves_custom_path_with_spaces_and_options(self):self.run_case('success')
