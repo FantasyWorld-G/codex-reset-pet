@@ -13,15 +13,18 @@ This is an independent local desktop application and Codex skill plugin, not an 
 
 ## Install through Codex (plugin first)
 
-In PowerShell or the Codex terminal, run:
+For first-time setup, run this entire block in PowerShell or the Codex terminal. The pet launches automatically when installation completes:
 
 ```powershell
 codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.4
 codex plugin add reset-reminder@codex-reset-pet
 codex plugin list --marketplace codex-reset-pet
+
+# Install and launch the desktop pet (the plugin was installed above)
+$f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.4/install.ps1' -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f -SkipPlugin
 ```
 
-Open a new Codex chat after installation. This installs the query/reminder plugin only; it does not install Python/Pillow or launch the desktop pet. For the desktop window with remaining quota and a Refresh button, continue with the desktop installation below. The desktop installer can register the plugin too.
+The first three lines install the Codex query/reminder plugin. The final line installs the desktop app and Python/Pillow dependencies, creates a shortcut, and launches the pet. `-SkipPlugin` avoids duplicate plugin registration; it does not skip desktop installation or launch. For plugin-only setup, run only the first three lines. Open a new Codex chat to synchronize your account; the pet still opens with a waiting-for-sync message before account data is available.
 
 Commands are documented in the [official OpenAI CLI reference](https://learn.chatgpt.com/docs/cli/reference).
 

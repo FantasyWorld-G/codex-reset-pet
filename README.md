@@ -13,15 +13,18 @@ Windows 桌面常驻小精灵，显示 **Codex 账户额度重置** 与 **重置
 
 ## 通过 Codex 安装（优先入口）
 
-在 PowerShell 或 Codex 的终端中执行：
+首次安装时，在 PowerShell 或 Codex 的终端中按顺序执行下面整组命令；完成后会自动启动小精灵：
 
 ```powershell
 codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.4
 codex plugin add reset-reminder@codex-reset-pet
 codex plugin list --marketplace codex-reset-pet
+
+# 安装桌面小精灵并立即启动（配套插件已在上面安装）
+$f = Join-Path $env:TEMP 'codex-reset-pet-install.ps1'; Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.4/install.ps1' -OutFile $f; powershell -NoProfile -ExecutionPolicy Bypass -File $f -SkipPlugin
 ```
 
-安装后新建 Codex 聊天即可使用查询和提醒插件。**这组命令只安装 Codex 插件，不安装 Python/Pillow，也不会启动桌面宠物。** 需要桌面上的剩余额度窗口和刷新按钮时，再执行下方桌面安装；桌面安装器也会注册配套插件。
+前三行安装 Codex 查询和提醒插件，最后一行安装桌面程序、Python/Pillow 依赖并自动启动小精灵，同时创建桌面快捷方式。`-SkipPlugin` 仅跳过重复注册插件，不会跳过桌面安装或启动。只需要插件时执行前三行即可。安装后新建 Codex 聊天同步账户；首次尚无账户数据也会显示小精灵及“等待同步”。
 
 命令依据 [OpenAI 官方 CLI 文档](https://learn.chatgpt.com/docs/cli/reference)。
 
