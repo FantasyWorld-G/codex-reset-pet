@@ -171,7 +171,7 @@ class TiboTests(unittest.TestCase):
 
 
 def ui_worker(directory):
-    folder=Path(directory);app=pet.Companion(folder/'usage.json',folder/'settings.json',tibo_enabled=False,sound_enabled=False)
+    folder=Path(directory);app=pet.Companion(folder/'usage.json',folder/'settings.json',tibo_enabled=False,quota_auto_refresh=False,sound_enabled=False)
     app.expanded=True
     app.tibo_snapshot=snapshot(time.time())
     app.tibo_snapshot['last_reset']={'at':time.time()-60,'source':'operator-observed',

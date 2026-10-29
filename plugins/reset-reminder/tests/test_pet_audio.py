@@ -226,7 +226,7 @@ def exercise_ui():
     with tempfile.TemporaryDirectory() as directory:
         folder = Path(directory)
         make_personal_pack(folder/'voice-amitaro')
-        app = Companion(folder/'usage.json',folder/'settings.json',tibo_enabled=False)
+        app = Companion(folder/'usage.json',folder/'settings.json',tibo_enabled=False,quota_auto_refresh=False)
         backend = Backend()
         app.audio.backend = backend
         try:
@@ -288,7 +288,7 @@ def exercise_ui():
             assert backend.calls[-1] == (None, 0)
         finally:
             app.close()
-        other = Companion(folder/'usage.json',folder/'settings.json',tibo_enabled=False)
+        other = Companion(folder/'usage.json',folder/'settings.json',tibo_enabled=False,quota_auto_refresh=False)
         try:
             assert not other.audio.enabled
         finally:

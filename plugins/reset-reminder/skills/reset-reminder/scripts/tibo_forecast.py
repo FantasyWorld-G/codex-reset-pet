@@ -15,7 +15,7 @@ REASON_TAGS = {'incident':'事故相关','compensation':'用量补偿','mileston
 
 
 def public_json(url):
-    request = Request(url,headers={'User-Agent':'CodexResetPet/0.4.7','Accept':'application/json'})
+    request = Request(url,headers={'User-Agent':'CodexResetPet/0.4.8','Accept':'application/json'})
     with urlopen(request,timeout=10) as response:
         raw = response.read(1_000_001)
     if len(raw)>1_000_000:

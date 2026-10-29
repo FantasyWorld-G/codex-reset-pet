@@ -13,14 +13,14 @@ This is an independent local desktop application and Codex skill plugin, not an 
 
 ## Install through Codex (plugin first)
 
-Current version: **v0.4.7**, including all nine current voice reactions. Download and extract the complete release, then double-click **install.cmd** to install/upgrade and launch, or use the Codex setup below.
+Current version: **v0.4.8**, including all nine current voice reactions. Download and extract the complete release, then double-click **install.cmd** to install/upgrade and launch, or use the Codex setup below.
 
  For first-time setup, run these two steps in **PowerShell or Codex's PowerShell terminal**.
 
 **1. Install the companion plugin** (skip if already installed):
 
 ```powershell
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.7
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.8
 codex plugin add reset-reminder@codex-reset-pet
 ```
 
@@ -28,7 +28,7 @@ codex plugin add reset-reminder@codex-reset-pet
 
 ```powershell
 $file = "$env:TEMP\codex-reset-pet-install.ps1"
-Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.7/install.ps1' -OutFile $file
+Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.8/install.ps1' -OutFile $file
 powershell -NoProfile -ExecutionPolicy Bypass -File $file -SkipPlugin
 ```
 
@@ -80,7 +80,7 @@ In a new Codex chat, send:
 
 > Use the reset-reminder plugin to synchronize my account quota reset and reset-credit expiration information to the desktop pet. Synchronize once only; do not create a scheduled task.
 
-Then use **刷新** (Refresh) in the window to update quota. Reset-credit expiration details may still require a full sync. The pet launches before synchronization and displays a waiting message. Installation does not create scheduled tasks or enable Windows startup.
+**Automatic quota refresh is on by default**: read once at startup, then every five minutes using the locally signed-in Codex CLI. **刷新** (Refresh) remains available. Credit auto-redemption is not required or enabled. Failed/offline reads retain cached data and retry after 30/60/120/240/300 seconds; successful reads restore the five-minute interval. Right-click to disable polling; the choice is saved. Reset-credit details may still need a full sync. No Codex scheduled task or Windows startup task is created.
 
 ## Everyday controls
 
@@ -90,7 +90,7 @@ Then use **刷新** (Refresh) in the window to update quota. Reset-credit expira
 | Double click | Head pat and laugh without toggling the bubble |
 | Drag and release | Move the pet and play the landing animation; dragging 180 pixels triggers one happy sound |
 | No interaction for 10 seconds | Stay asleep with zzz particles; touch to wake |
-| Right click | Reactions, sound toggle, optional credit redemption, and Exit |
+| Right click | Reactions, sound toggle, automatic quota refresh, optional credit redemption, and Exit |
 | Refresh / Update forecast | Update account quota / Tibo website information respectively |
 
 The bubble shows quota, credit expiry, Tibo forecasts, and the previous reset. Times use Beijing time, with urgency colors. Website forecasts do not confirm a reset for your account. Automatic expiring-credit redemption is off by default and requires explicit opt-in; it cannot be guaranteed while asleep or offline.

@@ -13,14 +13,14 @@ Windows 桌面常驻小精灵，显示 **Codex 账户额度重置** 与 **重置
 
 ## 通过 Codex 安装（优先入口）
 
-当前版本 **v0.4.7**，完整包内置当前 9 段语气音。下载发布包并解压后，双击 **install.cmd** 即可安装/升级并启动；也可使用下面的 Codex 安装方式。
+当前版本 **v0.4.8**，完整包内置当前 9 段语气音。下载发布包并解压后，双击 **install.cmd** 即可安装/升级并启动；也可使用下面的 Codex 安装方式。
 
 首次安装，在 **PowerShell 或 Codex 的 PowerShell 终端**依次执行两步。
 
 **1. 安装配套插件**（已安装可跳过）：
 
 ```powershell
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.7
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.8
 codex plugin add reset-reminder@codex-reset-pet
 ```
 
@@ -28,7 +28,7 @@ codex plugin add reset-reminder@codex-reset-pet
 
 ```powershell
 $file = "$env:TEMP\codex-reset-pet-install.ps1"
-Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.7/install.ps1' -OutFile $file
+Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.8/install.ps1' -OutFile $file
 powershell -NoProfile -ExecutionPolicy Bypass -File $file -SkipPlugin
 ```
 
@@ -80,7 +80,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $file
 
 > 使用 reset-reminder 插件，同步我的账户额度重置和重置卡到期信息到桌面小精灵，只同步一次，不创建定时任务。
 
-之后可点窗口里的 **刷新** 更新剩余额度；重置卡到期明细可能仍需完整同步。未同步也能启动，窗口会显示等待同步。安装不会创建定时任务或开机自启。
+**额度自动刷新默认开启**：启动时读取一次，之后每 5 分钟自动读取本机已登录 Codex 的额度，也可随时点击 **刷新**。无需开启自动用卡。断网或读取失败时保留旧数据，按 30/60/120/240/300 秒重试；恢复后回到每 5 分钟。右键可关闭自动刷新，选择会保存。重置卡到期明细可能仍需完整同步。安装不会创建 Codex 定时任务或开机自启。
 
 ## 日常操作
 
@@ -90,7 +90,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $file
 | 双击人物 | 摸摸头和轻笑，不切换气泡 |
 | 拖动、松手 | 移动人物和落地动作；拖远 180 像素触发一次开心音 |
 | 10 秒不操作 | 持续睡眠，头顶出现 zzz；触碰唤醒 |
-| 右键人物 | 表情互动、开关音效、临期用卡设置、退出 |
+| 右键人物 | 表情互动、开关音效、额度自动刷新、临期用卡设置、退出 |
 | 刷新 / 更新预估 | 分别更新账户额度 / Tibo 网站信息 |
 
 气泡显示额度、重置卡到期、Tibo 预估和上次重置。时间均为北京时间，并随临近程度变色。网站预估不代表本账户已经重置。临期自动用卡默认关闭，需主动开启；电脑休眠或断网时无法保证执行。

@@ -1,4 +1,4 @@
-"""Windows companion with local snapshots and on-demand Codex quota refresh."""
+"""Windows companion with local snapshots and independent Codex quota polling."""
 import argparse
 import ctypes
 import hashlib
@@ -26,6 +26,7 @@ from animation_state import AnimationStateMachine, State, animation_pose, sleep_
 
 from check_reset import CN, account_snapshot, card_snapshot, epoch, read_json, write_json
 from refresh_usage import RefreshError, fetch_snapshot, save_snapshot
+from quota_refresh import QuotaRefresh
 from tibo_forecast import fetch_forecast, forecast_view, source_url
 from auto_redeem import run_cycle, read_config, valid_policy, exact_credit_client, card_rows
 from refresh_usage import account_operation, make_snapshot
@@ -138,7 +139,7 @@ def display_model(envelope, manual, now):
 class Companion:
     WIDTH, HEIGHT = 370, 873
 
-    def __init__(self, usage, settings, windowed=False, tibo_enabled=True, sound_enabled=None):
+    def __init__(self, usage, settings, windowed=False, tibo_enabled=True, sound_enabled=None, quota_auto_refresh=None):
         self.usage, self.settings = Path(usage), Path(settings)
         self.closed = False
         self.started_at = time.time()
@@ -189,6 +190,7 @@ class Companion:
         self.refresh_busy = False
         self.refresh_message = ''
         self.refresh_message_until = 0
+        self.quota_refresh = QuotaRefresh()
         self.auto_config_path=self.usage.with_name('auto-redeem.json')
         self.auto_state_path=self.usage.with_name('auto-redeem-state.json')
         self.auto_policy=read_config(self.auto_config_path)
@@ -222,8 +224,11 @@ class Companion:
             y = max(0, min(int(saved.get('y', y)), self.root.winfo_screenheight()-self.HEIGHT))
             self.expanded = bool(saved.get('expanded', True))
             saved_sound = saved.get('sound_enabled', True) is not False
+            self.quota_refresh.enabled = saved.get('quota_auto_refresh', True) is not False
         except (OSError, ValueError, TypeError):
             pass
+        if quota_auto_refresh is not None:
+            self.quota_refresh.enabled = bool(quota_auto_refresh)
         self.audio = PetAudio(Path(__file__).resolve().parents[3]/'assets/sounds',
                               saved_sound if sound_enabled is None else sound_enabled,
                               personal_assets=self.settings.parent/'voice-amitaro')
@@ -353,6 +358,10 @@ class Companion:
             'help_text':help_text, 'sprite_border':False,
             'tibo_button_visible':bool(self.tibo_button.winfo_ismapped()),
             'refresh_button_visible':bool(self.refresh_button.winfo_ismapped()),
+            'quota_auto_refresh': self.quota_refresh.enabled,
+            'quota_refresh_busy': self.refresh_busy,
+            'quota_refresh_error': self.quota_refresh.last_error,
+            'quota_refresh_in_seconds': max(0, round(self.quota_refresh.next_due-time.monotonic())) if self.quota_refresh.enabled else None,
             'tibo_forecast':self.tibo_model,
             'tibo_refresh_button_visible':bool(self.tibo_refresh_button.winfo_ismapped()),
             'tibo_source_button_visible':bool(self.tibo_source_button.winfo_ismapped()),
@@ -509,7 +518,7 @@ class Companion:
         self.auto_message='自动使用：关闭'
 
     def enable_auto(self,start,stop):
-        if self.auto_busy:return
+        if self.auto_busy or self.refresh_busy:return
         self.auto_revision+=1
         revision=self.auto_revision
         self.auto_busy=True
@@ -549,9 +558,10 @@ class Companion:
                     if result.get('snapshot'):
                         self.manual_envelope=result['snapshot']
                         self.last_read=0
+                        self.quota_refresh.complete(True)
                     if result.get('outcome'):
                         logging.info('Auto redeem result: %s',result['outcome'])
-        if self.closed or self.auto_busy or not valid_policy(self.auto_policy) or time.time()<self.auto_next_check:return
+        if self.closed or self.auto_busy or self.refresh_busy or not valid_policy(self.auto_policy) or time.time()<self.auto_next_check:return
         self.auto_busy=True
         revision=self.auto_revision
         def worker():
@@ -589,10 +599,16 @@ class Companion:
             return self.refresh_message
         return self.model['footer']
 
-    def refresh_usage(self):
+    def refresh_usage(self, automatic=False):
         if self.closed or self.refresh_busy:
             return
-        self.animation.touch(time.monotonic())
+        if self.auto_busy:
+            if not automatic:
+                self.refresh_message = '正在检查账户，请稍后刷新'
+                self.refresh_message_until = time.monotonic()+12
+            return
+        if not automatic:
+            self.animation.touch(time.monotonic())
         self.refresh_busy = True
         self.refresh_button.configure(text='刷新中',state='disabled')
         self.update_display()
@@ -627,8 +643,17 @@ class Companion:
         self.refresh_button.configure(text='刷新',state='normal')
         self.refresh_message = message
         self.refresh_message_until = time.monotonic()+12
+        self.quota_refresh.complete(success, '' if success else message)
         if success:
             self.last_read = 0
+
+    def tick_quota(self):
+        if not self.closed and self.quota_refresh.due(self.refresh_busy or self.auto_busy):
+            self.refresh_usage(automatic=True)
+
+    def toggle_quota_refresh(self):
+        self.quota_refresh.set_enabled(not self.quota_refresh.enabled)
+        self.save()
 
     def react(self, action):
         self.cancel_pending_click()
@@ -745,6 +770,7 @@ class Companion:
             self.draw()
         else:
             self.update_display()
+        self.tick_quota()
         self.root.after(500, self.tick)
 
     def press(self, event):
@@ -862,11 +888,13 @@ class Companion:
         menu.add_command(label='重新读取账户快照', command=lambda: setattr(self,'last_read',0))
         menu.add_command(label='刷新 Codex 额度', command=self.refresh_usage,
                          state='disabled' if self.refresh_busy else 'normal')
+        menu.add_command(label='关闭额度自动刷新（5分钟）' if self.quota_refresh.enabled else '开启额度自动刷新（5分钟）',
+                         command=self.toggle_quota_refresh)
         automatic=tk.Menu(menu,tearoff=False)
         automatic.add_command(label='开启：到期前 16–6 分钟',command=lambda:self.enable_auto(960,360),
-                              state='disabled' if self.auto_busy else 'normal')
+                              state='disabled' if self.auto_busy or self.refresh_busy else 'normal')
         automatic.add_command(label='开启：到期前 5 分钟至到期',command=lambda:self.enable_auto(300,0),
-                              state='disabled' if self.auto_busy else 'normal')
+                              state='disabled' if self.auto_busy or self.refresh_busy else 'normal')
         automatic.add_command(label='关闭自动使用',command=self.disable_auto)
         menu.add_cascade(label='临期重置卡自动使用',menu=automatic)
         if not self.root.overrideredirect():
@@ -881,7 +909,8 @@ class Companion:
     def save(self):
         try:
             write_json(self.settings, {'x': self.root.winfo_x(),'y': self.root.winfo_y(),
-                                      'expanded': self.expanded,'sound_enabled':self.audio.enabled})
+                                      'expanded': self.expanded,'sound_enabled':self.audio.enabled,
+                                      'quota_auto_refresh': self.quota_refresh.enabled})
         except OSError:
             pass
 
@@ -948,7 +977,7 @@ def main():
         if sys.stderr is None:
             sys.stderr = crash_log
         faulthandler.enable(file=crash_log)
-        logging.info('Desktop companion 0.4.7 starting, pid=%s',os.getpid())
+        logging.info('Desktop companion 0.4.8 starting, pid=%s',os.getpid())
         app = Companion(args.usage,args.settings,args.windowed)
         app.root.mainloop()
         logging.info('Desktop companion closed normally')

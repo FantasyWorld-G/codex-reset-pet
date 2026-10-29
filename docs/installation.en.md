@@ -7,11 +7,11 @@ Choose only the alternatives you need below. Everyday startup only needs `codex-
 
 ### Manual release download (no Git required)
 
-Download `codex-reset-pet-v0.4.7.zip` and `SHA256SUMS.txt` from [Release v0.4.7](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.7). Put both files in one directory and verify the checksum before extracting the archive:
+Download `codex-reset-pet-v0.4.8.zip` and `SHA256SUMS.txt` from [Release v0.4.8](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.8). Put both files in one directory and verify the checksum before extracting the archive:
 
 ```powershell
-$archive = (Resolve-Path '.\codex-reset-pet-v0.4.7.zip').Path
-$expected = ((Get-Content '.\SHA256SUMS.txt' | Where-Object { $_ -match '\s+codex-reset-pet-v0\.4\.7\.zip$' }) -split '\s+')[0]
+$archive = (Resolve-Path '.\codex-reset-pet-v0.4.8.zip').Path
+$expected = ((Get-Content '.\SHA256SUMS.txt' | Where-Object { $_ -match '\s+codex-reset-pet-v0\.4\.8\.zip$' }) -split '\s+')[0]
 $sha256 = [Security.Cryptography.SHA256]::Create()
 $archiveStream = [IO.File]::OpenRead($archive)
 try { $actual = ([BitConverter]::ToString($sha256.ComputeHash($archiveStream))).Replace('-','') }
@@ -30,7 +30,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath .
 With Git installed, run this in the directory where you want to keep the source:
 
 ```powershell
-git clone --branch v0.4.7 --depth 1 https://github.com/FantasyWorld-G/codex-reset-pet.git
+git clone --branch v0.4.8 --depth 1 https://github.com/FantasyWorld-G/codex-reset-pet.git
 Set-Location codex-reset-pet
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath .
 ```
@@ -80,15 +80,15 @@ If `codex-pet` is not found, fully close and reopen your terminal app. Embedded 
 ## Update only the Codex plugin
 
 
-For a Git marketplace installed using the README commands, switch its pinned version to v0.4.7 with:
+For a Git marketplace installed using the README commands, switch its pinned version to v0.4.8 with:
 
 ```powershell
 codex plugin marketplace remove codex-reset-pet
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.7
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.8
 codex plugin add reset-reminder@codex-reset-pet
 ```
 
-For a future release, replace `v0.4.7` with its published tag. If your Git marketplace intentionally tracks `main`, use the following instead; refreshing a pinned tag does not advance to a newer release:
+For a future release, replace `v0.4.8` with its published tag. If your Git marketplace intentionally tracks `main`, use the following instead; refreshing a pinned tag does not advance to a newer release:
 
 ```powershell
 codex plugin marketplace upgrade codex-reset-pet
@@ -110,4 +110,4 @@ The regression tests cover animation state transitions, countdowns, reset-credit
 
 ## Included audio
 
-The complete v0.4.7 package includes nine current voices for all desktop installation methods, without manual import. Double-click install.cmd from the extracted package to install and launch. Legacy personal files are retained; only explicit import selections override included voices. Inspect with codex-pet sounds. Starting with v0.4.7, the stable release package and updater include these voices.
+The complete v0.4.8 package includes nine current voices for all desktop installation methods, without manual import. Double-click install.cmd from the extracted package to install and launch. Legacy personal files are retained; only explicit import selections override included voices. Inspect with codex-pet sounds. Starting with v0.4.8, the stable release package and updater include these voices.

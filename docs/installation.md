@@ -7,11 +7,11 @@
 
 ### 手动下载发布包（无需 Git）
 
-从 [v0.4.7 Release](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.7) 下载 `codex-reset-pet-v0.4.7.zip` 和 `SHA256SUMS.txt`。将两者放在同一目录，运行下面的校验命令；仅在校验通过后解压，并在解压后的 `codex-reset-pet` 目录运行安装器。
+从 [v0.4.8 Release](https://github.com/FantasyWorld-G/codex-reset-pet/releases/tag/v0.4.8) 下载 `codex-reset-pet-v0.4.8.zip` 和 `SHA256SUMS.txt`。将两者放在同一目录，运行下面的校验命令；仅在校验通过后解压，并在解压后的 `codex-reset-pet` 目录运行安装器。
 
 ```powershell
-$archive = (Resolve-Path '.\codex-reset-pet-v0.4.7.zip').Path
-$expected = ((Get-Content '.\SHA256SUMS.txt' | Where-Object { $_ -match '\s+codex-reset-pet-v0\.4\.7\.zip$' }) -split '\s+')[0]
+$archive = (Resolve-Path '.\codex-reset-pet-v0.4.8.zip').Path
+$expected = ((Get-Content '.\SHA256SUMS.txt' | Where-Object { $_ -match '\s+codex-reset-pet-v0\.4\.8\.zip$' }) -split '\s+')[0]
 $sha256 = [Security.Cryptography.SHA256]::Create()
 $archiveStream = [IO.File]::OpenRead($archive)
 try { $actual = ([BitConverter]::ToString($sha256.ComputeHash($archiveStream))).Replace('-','') }
@@ -30,7 +30,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath .
 需要已安装 Git。在准备保存源码的目录运行：
 
 ```powershell
-git clone --branch v0.4.7 --depth 1 https://github.com/FantasyWorld-G/codex-reset-pet.git
+git clone --branch v0.4.8 --depth 1 https://github.com/FantasyWorld-G/codex-reset-pet.git
 Set-Location codex-reset-pet
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath .
 ```
@@ -80,15 +80,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -SourcePath . 
 ## 仅更新 Codex 插件
 
 
-适用于按首页命令添加的 Git 市场。将固定版本切换到 v0.4.7：
+适用于按首页命令添加的 Git 市场。将固定版本切换到 v0.4.8：
 
 ```powershell
 codex plugin marketplace remove codex-reset-pet
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.7
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.8
 codex plugin add reset-reminder@codex-reset-pet
 ```
 
-以后升级时将 `v0.4.7` 替换为已发布的新标签。若你的 Git 市场明确跟踪 `main`，可改用下面两条；固定标签执行 `upgrade` 不会自动跳到新版本：
+以后升级时将 `v0.4.8` 替换为已发布的新标签。若你的 Git 市场明确跟踪 `main`，可改用下面两条；固定标签执行 `upgrade` 不会自动跳到新版本：
 
 ```powershell
 codex plugin marketplace upgrade codex-reset-pet
@@ -110,4 +110,4 @@ python scripts/build_release.py
 
 ## 内置音效
 
-v0.4.7 完整包内置最新 9 段语气音，所有桌面安装方式均无需手动导入。解压包可双击 install.cmd 安装并启动。旧版个人文件保留，但只有主动导入选择才覆盖内置音效。使用 codex-pet sounds 查看。从 v0.4.7 开始，正式发布包和更新入口均包含内置新版音效。
+v0.4.8 完整包内置最新 9 段语气音，所有桌面安装方式均无需手动导入。解压包可双击 install.cmd 安装并启动。旧版个人文件保留，但只有主动导入选择才覆盖内置音效。使用 codex-pet sounds 查看。从 v0.4.8 开始，正式发布包和更新入口均包含内置新版音效。

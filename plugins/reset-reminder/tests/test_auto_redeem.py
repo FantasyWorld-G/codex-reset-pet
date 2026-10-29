@@ -185,7 +185,7 @@ def ui_worker(folder):
     root=Path(folder)
     # The process uses mocks exclusively; never contact a real account in tests.
     (root/'auto-redeem.json').unlink(missing_ok=True)
-    app=pet.Companion(root/'usage.json',root/'settings.json',tibo_enabled=False,sound_enabled=False)
+    app=pet.Companion(root/'usage.json',root/'settings.json',tibo_enabled=False,quota_auto_refresh=False,sound_enabled=False)
     errors=[];checks=[]
     app.root.report_callback_exception=lambda kind,value,tb:errors.append(str(value))
     def enroll(operation,**kw):return operation(ACCOUNT,limits([card()]),None)
