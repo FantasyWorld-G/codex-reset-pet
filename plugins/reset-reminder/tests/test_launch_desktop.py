@@ -59,9 +59,11 @@ assert k.AssignProcessToJobObject(job,k.GetCurrentProcess()),c.get_last_error()
 launch([sys.executable,sys.argv[2]])
 k.TerminateJobObject(job,77)
 ''', encoding='utf-8')
+            # Windows supports nested jobs. Keep the test parent in the host's
+            # job; only the real launcher must let its child survive teardown.
+            # Hosted CI explicitly denies CREATE_BREAKAWAY_FROM_JOB.
             result = subprocess.run([sys.executable, str(parent), str(SCRIPTS), str(child)],
-                                    creationflags=subprocess.CREATE_BREAKAWAY_FROM_JOB |
-                                    subprocess.CREATE_NO_WINDOW,
+                                    creationflags=subprocess.CREATE_NO_WINDOW,
                                     capture_output=True, timeout=10)
             self.assertEqual(result.returncode, 77, result.stderr.decode(errors='replace'))
             deadline = time.monotonic()+8

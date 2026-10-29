@@ -58,7 +58,8 @@ class UpdaterTests(unittest.TestCase):
             self.assertIn('UPDATER_CASE_PASSED',result.stdout)
             if case in ('success','installer-fail'):
                 args=json.loads((folder/'arguments.json').read_text())
-                self.assertEqual(args['root'],directory)
+                # PowerShell expands Windows short names (RUNNER~1) to long paths.
+                self.assertTrue(os.path.samefile(args['root'], directory))
                 self.assertTrue(all(args[k] for k in ('noLaunch','noShortcut','skipPlugin')))
             else:self.assertFalse((folder/'arguments.json').exists())
 
