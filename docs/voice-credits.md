@@ -52,6 +52,10 @@ The pout uses one complete nmou_03.wav recording, about 1.89 seconds, without an
 
 ## 维护者发布记录 / Maintainer distribution record
 
+`assets/alerts/urgent.wav` 使用あみたろ的 abababababa_03.wav 与 abababababa_04.wav（作者“あわてる・あせる”分类）。A 三次之后 B 三次，间隔逐渐缩短，完整保留原始 PCM、音高及语速，总长 10 秒。来源：https://amitaro.net/voice/game_01/#104_awateru 。录音遵循作者条款，不属于本项目源码许可。
+
+The quota cue combines Amitaro's abababababa_03.wav and abababababa_04.wav from the flustered/anxious category: three A takes followed by three higher-pitched B takes, with decreasing pauses. Original PCM, pitch and tempo are unchanged; total duration is ten seconds. Recording author terms apply.
+
 作者日文条款允许按条件随应用同捆，要求署名/条款链接，以及公开或开始使用后约一个月内发送使用报告；内容大幅修改需事先咨询。作者日英文条款的条件不同，请按适用条款处理再分发。这里不表示作者为本项目背书或已单独确认本项目。当前尚未发送使用报告；维护者需完成这一项，不能把自动发布成功当作报告已完成。
 
 The Japanese terms describe conditional application bundling, attribution/terms links, and a usage report around one month after publication or first use; substantial content edits require prior consultation. The Japanese and English terms differ; follow the terms applicable to your reuse. No author endorsement or individual approval is claimed. The usage report has not yet been sent; the maintainer must complete it separately. Successful automated publication is not proof that this report was sent.

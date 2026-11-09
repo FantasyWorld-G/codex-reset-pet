@@ -1,0 +1,35 @@
+{
+  "duration": 10,
+  "clips": [
+    {
+      "file": "abababababa_03.wav",
+      "start": 0.0,
+      "end": 1.4340589569160997
+    },
+    {
+      "file": "abababababa_03.wav",
+      "start": 1.6140589569160997,
+      "end": 3.0481179138321997
+    },
+    {
+      "file": "abababababa_03.wav",
+      "start": 3.1881179138321993,
+      "end": 4.6221768707483
+    },
+    {
+      "file": "abababababa_04.wav",
+      "start": 4.722176870748299,
+      "end": 6.4386167800453515
+    },
+    {
+      "file": "abababababa_04.wav",
+      "start": 6.513628117913832,
+      "end": 8.230068027210883
+    },
+    {
+      "file": "abababababa_04.wav",
+      "start": 8.280068027210884,
+      "end": 9.996507936507937
+    }
+  ]
+}

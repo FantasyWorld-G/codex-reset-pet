@@ -12,6 +12,8 @@ class PetAudio:
     DRAG_HAPPY_SECONDS = .94
 
     def __init__(self, assets, enabled=True, backend=None, clock=time.monotonic, personal_assets=None):
+        self.alert_assets = Path(assets).parent/'alerts'
+        self.urgent_until = 0
         self.assets, self.provider, errors = choose_audio(assets, personal_assets)
         for error in errors:
             logging.error('%s; selected pack: %s', error, self.provider)
@@ -36,6 +38,7 @@ class PetAudio:
         self.happy_until = float('-inf')
 
     def stop(self):
+        self.urgent_until = 0
         if self.backend:
             try:
                 self.backend.PlaySound(None, 0)
@@ -51,10 +54,12 @@ class PetAudio:
         if self.closed or not self.enabled or self.backend is None:
             return False
         now = self.clock()
+        if name != 'urgent' and now < self.urgent_until:
+            return False
         # Ignore rapid repeated clicks; distinct actions interrupt the old clip.
         if now-self.last_play < .18 and name.startswith('click'):
             return False
-        path = self.assets/(name+'.wav')
+        path = (self.alert_assets if name == 'urgent' else self.assets)/(name+'.wav')
         if name == 'pet' and not path.is_file():
             path = self.assets/'click_2.wav'
         try:
@@ -70,12 +75,29 @@ class PetAudio:
                 logging.exception('Pet audio unavailable: %s', name)
             return False
 
+    def urgent(self):
+        if self.play('urgent'):
+            self.urgent_until = self.clock()+10
+
+    def stop_urgent(self):
+        if self.urgent_until:
+            self.stop()
+
+    def tick(self):
+        if self.urgent_until and self.clock() >= self.urgent_until:
+            self.stop()
+
     def observe(self, state, revision):
+        self.tick()
         state = str(getattr(state, 'value', state))
         if self.closed or revision == self.last_revision:
             return
         previous = self.last_state
         self.last_state, self.last_revision = state, revision
+        if self.clock() < self.urgent_until:
+            return
+        if previous == 'urgent' and state == 'sleep':
+            return  # The ten-second notice ends quietly, without an extra yawn.
         if previous == 'sleep' and state != 'sleep':
             self.stop()
             if state == 'idle':

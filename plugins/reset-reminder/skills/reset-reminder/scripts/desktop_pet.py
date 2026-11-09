@@ -27,6 +27,7 @@ from animation_state import AnimationStateMachine, State, animation_pose, sleep_
 from check_reset import CN, account_snapshot, card_snapshot, epoch, read_json, write_json
 from refresh_usage import RefreshError, fetch_snapshot, save_snapshot
 from quota_refresh import QuotaRefresh
+from quota_alert import QuotaAlert
 from tibo_forecast import fetch_forecast, forecast_view, source_url
 from auto_redeem import run_cycle, read_config, valid_policy, exact_credit_client, card_rows
 from refresh_usage import account_operation, make_snapshot
@@ -191,6 +192,8 @@ class Companion:
         self.refresh_message = ''
         self.refresh_message_until = 0
         self.quota_refresh = QuotaRefresh()
+        self.quota_alert = QuotaAlert()
+        self.quota_notice = None
         self.auto_config_path=self.usage.with_name('auto-redeem.json')
         self.auto_state_path=self.usage.with_name('auto-redeem-state.json')
         self.auto_policy=read_config(self.auto_config_path)
@@ -225,6 +228,7 @@ class Companion:
             self.expanded = bool(saved.get('expanded', True))
             saved_sound = saved.get('sound_enabled', True) is not False
             self.quota_refresh.enabled = saved.get('quota_auto_refresh', True) is not False
+            self.quota_alert = QuotaAlert(saved.get('quota_alert_history'))
         except (OSError, ValueError, TypeError):
             pass
         if quota_auto_refresh is not None:
@@ -284,6 +288,14 @@ class Companion:
             padded = Image.new('RGBA',(SPRITE_SIZE,SPRITE_SIZE),(0,0,0,0))
             padded.alpha_composite(frame,((SPRITE_SIZE-frame.width)//2,(SPRITE_SIZE-frame.height)//2))
             frames[index] = padded
+        urgent = Image.open(path.with_name('maid-urgent-sprites.png')).convert('RGBA')
+        cell = urgent.width//3
+        for index in range(3):
+            frame = urgent.crop((index*cell,0,(index+1)*cell,urgent.height))
+            frame.thumbnail((174,174), Image.Resampling.LANCZOS)
+            padded = Image.new('RGBA',(SPRITE_SIZE,SPRITE_SIZE),(0,0,0,0))
+            padded.alpha_composite(frame,((SPRITE_SIZE-frame.width)//2,(SPRITE_SIZE-frame.height)//2))
+            frames[6+index] = padded
         return frames
 
     @lru_cache(maxsize=160)
@@ -359,6 +371,7 @@ class Companion:
             'tibo_button_visible':bool(self.tibo_button.winfo_ismapped()),
             'refresh_button_visible':bool(self.refresh_button.winfo_ismapped()),
             'quota_auto_refresh': self.quota_refresh.enabled,
+            'quota_exhausted_notice': self.quota_notice,
             'quota_refresh_busy': self.refresh_busy,
             'quota_refresh_error': self.quota_refresh.last_error,
             'quota_refresh_in_seconds': max(0, round(self.quota_refresh.next_due-time.monotonic())) if self.quota_refresh.enabled else None,
@@ -406,6 +419,8 @@ class Companion:
             c.create_rectangle(32,173,338,179,fill=BG,outline='',tags='quota')
             self.quota_fill = c.create_rectangle(32,173,32,179,fill='#8acdf0',outline='',tags='quota')
             self.update_quota()
+            self.quota_notice_item = self.text(32,171,'',10,'#ff8484',tags='quota')
+            self.update_quota_notice()
             c.create_window(274,142,anchor='nw',width=64,height=26,
                             window=self.refresh_button,tags='refresh')
             self.rounded(20,296,330,132,13,SURFACE)
@@ -452,10 +467,35 @@ class Companion:
         label = '剩余额度 -- · 等待同步' if percent is None else f'剩余额度 {percent:g}%'
         if percent is not None and stale:
             label += ' · 上次同步'
+        if self.quota_notice:
+            label = '额度已用完'
         self.canvas.itemconfigure(self.quota_text,text=label,fill=MUTED if stale else TEXT)
         self.canvas.coords(self.quota_fill,32,173,32+306*(percent or 0)/100,179)
         self.canvas.itemconfigure(self.quota_fill,fill=MUTED if stale else '#8acdf0',
-                                  state='normal' if percent is not None and percent > 0 else 'hidden')
+                                  state='normal' if percent is not None and percent > 0 and not self.quota_notice else 'hidden')
+
+    def update_quota_notice(self):
+        self.canvas.itemconfigure(self.quota_notice_item,
+            text=self.quota_notice['detail'] if self.quota_notice else '')
+
+    def tick_quota_alert(self, now):
+        notice, trigger = self.quota_alert.evaluate(
+            (self.envelope, self.manual_envelope), self.auto_policy, now)
+        self.quota_notice = notice
+        if self.quota_alert.changed:
+            self.save()
+        if notice is None:
+            self.audio.stop_urgent()
+            if self.animation.state == State.URGENT:
+                self.animation.play(State.IDLE, time.monotonic())
+        if trigger:
+            self.expanded = True
+            # Do not steal pointer capture or interrupt an active drag.
+            if not self.animation.held:
+                self.animation.play(State.URGENT, time.monotonic())
+            self.audio.urgent()
+            self.draw()
+            self.save()
 
     def update_display(self):
         for row, (dot,date,left,title) in zip(self.model['rows'], self.row_items):
@@ -465,6 +505,7 @@ class Companion:
             self.canvas.itemconfigure(title,text=row['title'])
         if self.expanded:
             self.update_quota()
+            self.update_quota_notice()
             self.canvas.itemconfigure(self.auto_status_item,text=self.auto_message[:31]+('…' if len(self.auto_message)>31 else ''))
             self.update_tibo_display()
             self.canvas.itemconfigure(self.footer_item,text=self.footer_text())
@@ -766,6 +807,7 @@ class Companion:
         self.model = display_model(self.envelope, self.manual_envelope, now)
         self.tick_tibo(now)
         self.tick_auto()
+        self.tick_quota_alert(now)
         if not hasattr(self,'sprite_item'):
             self.draw()
         else:
@@ -910,6 +952,7 @@ class Companion:
         try:
             write_json(self.settings, {'x': self.root.winfo_x(),'y': self.root.winfo_y(),
                                       'expanded': self.expanded,'sound_enabled':self.audio.enabled,
+                                      'quota_alert_history': self.quota_alert.history,
                                       'quota_auto_refresh': self.quota_refresh.enabled})
         except OSError:
             pass
@@ -977,7 +1020,7 @@ def main():
         if sys.stderr is None:
             sys.stderr = crash_log
         faulthandler.enable(file=crash_log)
-        logging.info('Desktop companion 0.4.8 starting, pid=%s',os.getpid())
+        logging.info('Desktop companion 0.4.9 starting, pid=%s',os.getpid())
         app = Companion(args.usage,args.settings,args.windowed)
         app.root.mainloop()
         logging.info('Desktop companion closed normally')

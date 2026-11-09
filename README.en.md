@@ -13,14 +13,14 @@ This is an independent local desktop application and Codex skill plugin, not an 
 
 ## Install through Codex (plugin first)
 
-Current version: **v0.4.8**, including all nine current voice reactions. Download and extract the complete release, then double-click **install.cmd** to install/upgrade and launch, or use the Codex setup below.
+Current version: **v0.4.9**, including nine interaction voices, a ten-second progressive quota alert, and three anxious expression stages. Download and extract the complete release, then double-click **install.cmd** to install/upgrade and launch, or use the Codex setup below.
 
  For first-time setup, run these two steps in **PowerShell or Codex's PowerShell terminal**.
 
 **1. Install the companion plugin** (skip if already installed):
 
 ```powershell
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.8
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.9
 codex plugin add reset-reminder@codex-reset-pet
 ```
 
@@ -28,7 +28,7 @@ codex plugin add reset-reminder@codex-reset-pet
 
 ```powershell
 $file = "$env:TEMP\codex-reset-pet-install.ps1"
-Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.8/install.ps1' -OutFile $file
+Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.9/install.ps1' -OutFile $file
 powershell -NoProfile -ExecutionPolicy Bypass -File $file -SkipPlugin
 ```
 
@@ -110,3 +110,12 @@ The bubble shows quota, credit expiry, Tibo forecasts, and the previous reset. T
 
 
 The included voice reactions use recordings by **Amitaro’s Voice Material Studio — あみたろの声素材工房** ([official website](https://amitaro.net/)). Thank you to the creator for providing these recordings. They are governed by the [author’s terms](https://amitaro.net/voice/terms/), not this project’s source license. Recordings are included as resources of the complete application, not distributed as a standalone asset pack. Usage and redistribution remain subject to the author’s terms. Original synthesized audio is kept only as a corruption fallback. See [voice notes and credits](docs/voice-credits.md) for the clip mapping.
+
+
+## Quota exhaustion notice
+
+Enabled by default. When a fresh account snapshot shows any quota window at zero, the pet expands its bubble, shakes urgently and plays two selected Amitaro flustered reactions in a ten-second A–A–A–B–B–B sequence, with shorter pauses and original pitch and tempo, respecting mute. The notice distinguishes available reset credits, no valid credits, and unknown credit status; it never treats old credit details as current.
+
+The notice is suppressed when expiring-credit auto-use is enabled for the current account. Its existing expiry window is unchanged: running out does not immediately redeem a credit. Each exhaustion episode is remembered locally per account, so refreshing, restarting or reconnecting does not repeat the sound. Fresh confirmation that all windows recovered rearms it. Snapshots older than ten minutes, passed reset deadlines awaiting confirmation and invalid data do not trigger it. Recovery, enabling auto-use for the current account, muting or exiting stops the cue.
+
+Detection uses quota polling (every five minutes by default), not server push; manual refresh also checks. With polling disabled, a new manual refresh or account snapshot is needed. Installation, update and launch command syntax is unchanged.

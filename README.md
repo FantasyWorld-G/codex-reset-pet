@@ -13,14 +13,14 @@ Windows 桌面常驻小精灵，显示 **Codex 账户额度重置** 与 **重置
 
 ## 通过 Codex 安装（优先入口）
 
-当前版本 **v0.4.8**，完整包内置当前 9 段语气音。下载发布包并解压后，双击 **install.cmd** 即可安装/升级并启动；也可使用下面的 Codex 安装方式。
+当前版本 **v0.4.9**，完整包内置当前 9 段互动语气音及 10 秒渐进催促音。下载发布包并解压后，双击 **install.cmd** 即可安装/升级并启动；也可使用下面的 Codex 安装方式。
 
 首次安装，在 **PowerShell 或 Codex 的 PowerShell 终端**依次执行两步。
 
 **1. 安装配套插件**（已安装可跳过）：
 
 ```powershell
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.8
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.9
 codex plugin add reset-reminder@codex-reset-pet
 ```
 
@@ -28,7 +28,7 @@ codex plugin add reset-reminder@codex-reset-pet
 
 ```powershell
 $file = "$env:TEMP\codex-reset-pet-install.ps1"
-Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.8/install.ps1' -OutFile $file
+Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.9/install.ps1' -OutFile $file
 powershell -NoProfile -ExecutionPolicy Bypass -File $file -SkipPlugin
 ```
 
@@ -110,3 +110,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $file
 
 
 内置语气音的声音来自 **あみたろの声素材工房（Amitaro’s Voice Material Studio）**：[作者网站](https://amitaro.net/)。感谢作者提供录音素材。录音遵循[作者使用条款](https://amitaro.net/voice/voice_rule/)，不属于本项目源码许可。录音仅作为完整应用的资源内置，不作为独立素材包发布；使用和再分发须遵守作者条款。原合成音仅作损坏时的回退。详细文件对应关系见[语气音与署名说明](docs/voice-credits.md)。
+
+
+## 额度耗尽提醒
+
+默认开启。账户刷新确认任一额度窗口剩余为 0 时，小精灵展开气泡、做出急促抖动并播放 10 秒あみたろ声优催促语气音（慌张 A 三次 → 高音调 B 三次，停顿逐渐缩短，原音高与语速，遵循静音设置）。提示区分别显示“有有效重置卡”“暂无有效重置卡”或“重置卡状态待确认”。只有当前账户的新快照可用于判断，不用旧卡片缓存猜测。
+
+当前账户已开启临期重置卡自动使用时，不触发催促。自动用卡仍遵循原先配置的到期窗口，不会因为额度用完立即用卡。同一次耗尽只提醒一次，记录保存在本机设置中，重启、断网重连不会重复；新鲜数据确认所有额度窗口恢复后，再次耗尽可再次提醒。快照超过 10 分钟、已到预计重置时间但尚未确认或数据无效时不触发。恢复额度、启用当前账户自动用卡、静音或退出会停止正在播放的催促音。
+
+检测沿用额度自动刷新（默认每 5 分钟），不是服务器推送；手动刷新也可触发检查。若关闭自动刷新，则需新的手动刷新或账户快照才能发现变化。安装、更新和启动命令格式不变。

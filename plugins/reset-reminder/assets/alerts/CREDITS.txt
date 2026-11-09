@@ -1,0 +1,6 @@
+Voice: Amitaro's Voice Material Studio / あみたろの声素材工房
+https://amitaro.net/
+Terms: https://amitaro.net/voice/voice_rule/
+English: https://amitaro.net/voice/terms/
+Source: https://amitaro.net/voice/game_01/#104_awateru
+abababababa_03.wav (A) + abababababa_04.wav (B): A A A B B B with decreasing pauses. Complete unmodified PCM. Application resources under the author's terms; not CC0.

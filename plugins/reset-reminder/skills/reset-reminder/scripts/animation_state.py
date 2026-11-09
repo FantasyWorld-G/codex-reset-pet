@@ -11,6 +11,7 @@ class State(str, Enum):
     DRAG = 'drag'
     LAND = 'land'
     SLEEP = 'sleep'
+    URGENT = 'urgent'
 
 
 class AnimationStateMachine:
@@ -52,6 +53,8 @@ class AnimationStateMachine:
         self.play(State.IDLE, now)
 
     def update(self, now):
+        if self.state == State.URGENT and now-self.started_at < 10:
+            return self.state, max(0, now-self.started_at)
         if not self.held and now-self.last_touch >= self.SLEEP_AFTER:
             if self.state != State.SLEEP:
                 self._enter(State.SLEEP, now)
@@ -62,6 +65,12 @@ class AnimationStateMachine:
 
 def animation_pose(action, elapsed, drag_angle=0):
     state = State(action)
+    if state == State.URGENT:
+        stage = 0 if elapsed < 1.614 else 1 if elapsed < 4.722 else 2
+        strength = min(1, max(0, elapsed/10))
+        return (6+stage, (1.5+4.5*strength)*math.sin(elapsed*(8+stage*3)),
+                -abs(math.sin(elapsed*(5+stage*2)))*(2+4*strength),
+                ('额度用完了…','有点着急了…','快看看重置卡呀！')[stage])
     if state == State.SLEEP:
         return 5,0,0,'睡眠中 · 触碰唤醒'
     if state == State.DRAG:
