@@ -13,14 +13,14 @@ This is an independent local desktop application and Codex skill plugin, not an 
 
 ## Install through Codex (plugin first)
 
-Current version: **v0.4.9**, including nine interaction voices, a ten-second progressive quota alert, and three anxious expression stages. Download and extract the complete release, then double-click **install.cmd** to install/upgrade and launch, or use the Codex setup below.
+Current version: **v0.4.10**, including nine interaction voices, a ten-second progressive quota alert, and three anxious expression stages. Download and extract the complete release, then double-click **install.cmd** to install/upgrade and launch, or use the Codex setup below.
 
  For first-time setup, run these two steps in **PowerShell or Codex's PowerShell terminal**.
 
 **1. Install the companion plugin** (skip if already installed):
 
 ```powershell
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.9
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.10
 codex plugin add reset-reminder@codex-reset-pet
 ```
 
@@ -28,7 +28,7 @@ codex plugin add reset-reminder@codex-reset-pet
 
 ```powershell
 $file = "$env:TEMP\codex-reset-pet-install.ps1"
-Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.9/install.ps1' -OutFile $file
+Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.10/install.ps1' -OutFile $file
 powershell -NoProfile -ExecutionPolicy Bypass -File $file -SkipPlugin
 ```
 
@@ -91,9 +91,9 @@ In a new Codex chat, send:
 | Drag and release | Move the pet and play the landing animation; dragging 180 pixels triggers one happy sound |
 | No interaction for 10 seconds | Stay asleep with zzz particles; touch to wake |
 | Right click | Reactions, sound toggle, automatic quota refresh, optional credit redemption, and Exit |
-| Refresh / Update forecast | Update account quota / Tibo website information respectively |
+| Refresh / Refresh post | Update account quota / the latest post from Tibo’s X profile |
 
-The bubble shows quota, credit expiry, Tibo forecasts, and the previous reset. Times use Beijing time, with urgency colors. Website forecasts do not confirm a reset for your account. Automatic expiring-credit redemption is off by default and requires explicit opt-in; it cannot be guaranteed while asleep or offline.
+The bubble shows quota, credit expiry, Tibo’s latest X post, and the previous reset. Times use Beijing time. Account countdowns use urgency colors. The post card displays the original text and links to the post. Select 翻译 to show a Simplified Chinese translation. Automatic expiring-credit redemption is off by default and requires explicit opt-in; it cannot be guaranteed while asleep or offline.
 
 ## Other installation options and help
 

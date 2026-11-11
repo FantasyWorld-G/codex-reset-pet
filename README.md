@@ -13,14 +13,14 @@ Windows 桌面常驻小精灵，显示 **Codex 账户额度重置** 与 **重置
 
 ## 通过 Codex 安装（优先入口）
 
-当前版本 **v0.4.9**，完整包内置当前 9 段互动语气音及 10 秒渐进催促音。下载发布包并解压后，双击 **install.cmd** 即可安装/升级并启动；也可使用下面的 Codex 安装方式。
+当前版本 **v0.4.10**，完整包内置当前 9 段互动语气音及 10 秒渐进催促音。下载发布包并解压后，双击 **install.cmd** 即可安装/升级并启动；也可使用下面的 Codex 安装方式。
 
 首次安装，在 **PowerShell 或 Codex 的 PowerShell 终端**依次执行两步。
 
 **1. 安装配套插件**（已安装可跳过）：
 
 ```powershell
-codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.9
+codex plugin marketplace add FantasyWorld-G/codex-reset-pet --ref v0.4.10
 codex plugin add reset-reminder@codex-reset-pet
 ```
 
@@ -28,7 +28,7 @@ codex plugin add reset-reminder@codex-reset-pet
 
 ```powershell
 $file = "$env:TEMP\codex-reset-pet-install.ps1"
-Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.9/install.ps1' -OutFile $file
+Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/FantasyWorld-G/codex-reset-pet/v0.4.10/install.ps1' -OutFile $file
 powershell -NoProfile -ExecutionPolicy Bypass -File $file -SkipPlugin
 ```
 
@@ -91,9 +91,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $file
 | 拖动、松手 | 移动人物和落地动作；拖远 180 像素触发一次开心音 |
 | 10 秒不操作 | 持续睡眠，头顶出现 zzz；触碰唤醒 |
 | 右键人物 | 表情互动、开关音效、额度自动刷新、临期用卡设置、退出 |
-| 刷新 / 更新预估 | 分别更新账户额度 / Tibo 网站信息 |
+| 刷新 / 刷新帖子 | 分别更新账户额度 / Tibo 在 X 上的最新帖子 |
 
-气泡显示额度、重置卡到期、Tibo 预估和上次重置。时间均为北京时间，并随临近程度变色。网站预估不代表本账户已经重置。临期自动用卡默认关闭，需主动开启；电脑休眠或断网时无法保证执行。
+气泡显示额度、重置卡到期、Tibo 在 X 上的最新帖子和上次重置。账户倒计时按临近程度变色。帖子显示北京时间与原文，可点击“翻译”查看简体中文，或点击“查看原帖”打开 X。临期自动用卡默认关闭，需主动开启；电脑休眠或断网时无法保证执行。
 
 ## 其他安装方式与说明
 

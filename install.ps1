@@ -8,7 +8,7 @@ param(
     [switch]$NoPath
 )
 $ErrorActionPreference = 'Stop'
-$Version = '0.4.9'
+$Version = '0.4.10'
 $Repository = 'FantasyWorld-G/codex-reset-pet'
 $InstallRoot = [IO.Path]::GetFullPath($InstallRoot)
 $appRoot = Join-Path $InstallRoot ('app/'+$Version)

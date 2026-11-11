@@ -1,6 +1,7 @@
 """Windows companion with local snapshots and independent Codex quota polling."""
 import argparse
 import ctypes
+import errno
 import hashlib
 import json
 import math
@@ -17,6 +18,8 @@ import time
 import tkinter as tk
 from tkinter import font as tkfont
 from datetime import datetime
+from http.client import HTTPException
+from urllib.error import HTTPError, URLError
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 from functools import lru_cache
 from collections import deque
@@ -28,7 +31,8 @@ from check_reset import CN, account_snapshot, card_snapshot, epoch, read_json, w
 from refresh_usage import RefreshError, fetch_snapshot, save_snapshot
 from quota_refresh import QuotaRefresh
 from quota_alert import QuotaAlert
-from tibo_forecast import fetch_forecast, forecast_view, source_url
+from tibo_history import fetch_history, history_view, source_url
+from tibo_posts import fetch_latest_post, post_view, translate_post
 from auto_redeem import run_cycle, read_config, valid_policy, exact_credit_client, card_rows
 from refresh_usage import account_operation, make_snapshot
 from launch_desktop import in_windows_job, windows_job_flags
@@ -41,8 +45,28 @@ MUTED = '#93a8b8'
 TEXT = '#edf4f8'
 SPRITE_SIZE = 288
 PET_X, PET_Y = 275,772
+POST_BASE_HEIGHT = 50
+POST_MAX_HEIGHT = 190
 TARGET_FPS = 60
 TIBO_URL = 'https://codex-reset.com/zh/tibo'
+CONNECTION_WARNING = '#ffb879'
+
+
+def connection_message(error):
+    if isinstance(error, HTTPError):
+        return '获取失败'
+    if isinstance(error, URLError):
+        error = error.reason
+        if isinstance(error, str):
+            return '连接失败'
+    if isinstance(error, TimeoutError):
+        return '连接超时'
+    if isinstance(error, OSError) and (
+        error.errno in (errno.ENETDOWN, errno.ENETUNREACH, 10050, 10051)
+        or getattr(error,'winerror',None) in (10050, 10051)
+    ):
+        return '无网络连接'
+    return '连接失败' if isinstance(error,(OSError,HTTPException)) else '获取失败'
 
 
 def time_color(seconds):
@@ -204,18 +228,32 @@ class Companion:
         self.auto_revision=0
         self.auto_thread=None
         self.tibo_enabled = tibo_enabled
-        self.tibo_path = self.usage.with_name('tibo-forecast.json')
-        self.tibo_snapshot = None
+        self.tibo_path = self.usage.with_name('tibo-updates.json')
+        self.tibo_snapshots = {}
         self.tibo_results = queue.Queue()
         self.tibo_busy = False
-        self.tibo_failed = False
+        self.tibo_errors = {}
         self.tibo_next_refresh = 0
         self.tibo_thread = None
         try:
-            self.tibo_snapshot = read_json(self.tibo_path)
+            cache = read_json(self.tibo_path)
+            if isinstance(cache,dict):
+                self.tibo_snapshots = cache
+        except FileNotFoundError:
+            try:
+                old = read_json(self.usage.with_name('tibo-forecast.json'))
+                if isinstance(old,dict):
+                    self.tibo_snapshots['history'] = {
+                        'updated_at':old.get('history_updated_at'), 'last_reset':old.get('last_reset')}
+            except (OSError,ValueError):
+                pass
         except (OSError,ValueError):
             pass
-        self.tibo_model = forecast_view(None,time.time())
+        self.tibo_post_model = post_view(self.tibo_snapshots.get('post'),time.time())
+        self.translation_results = queue.Queue()
+        self.translation_pending = None
+        self.translation_result = (None,None,'')
+        self.tibo_model = history_view(self.tibo_snapshots.get('history'),time.time())
         self.last_read = 0
         self.model = unavailable()
         saved_sound = True
@@ -250,7 +288,7 @@ class Companion:
             font=('Microsoft YaHei UI',-12),fg='#ffffff',bg='#365469',
             activeforeground='#ffffff',activebackground='#44657d',disabledforeground=MUTED,
             relief='flat',borderwidth=0,highlightthickness=0,cursor='hand2',takefocus=True)
-        self.tibo_refresh_button = tk.Button(self.canvas,text='更新预估',command=self.refresh_tibo,
+        self.tibo_refresh_button = tk.Button(self.canvas,text='刷新帖子',command=self.refresh_tibo,
             font=('Microsoft YaHei UI',-11),fg=TEXT,bg='#365469',
             activeforeground=TEXT,activebackground='#44657d',disabledforeground=MUTED,
             relief='flat',borderwidth=0,highlightthickness=0,cursor='hand2',takefocus=True)
@@ -258,6 +296,26 @@ class Companion:
             font=('Microsoft YaHei UI',-11),fg=TEXT,bg='#365469',
             activeforeground=TEXT,activebackground='#44657d',disabledforeground=MUTED,
             relief='flat',borderwidth=0,highlightthickness=0,cursor='hand2',takefocus=True)
+        self.tibo_post_button = tk.Button(self.canvas,text='查看原帖',
+            command=lambda:self.open_tibo_source(self.tibo_post_model['url']),
+            font=('Microsoft YaHei UI',-11),fg=TEXT,bg='#365469',
+            activeforeground=TEXT,activebackground='#44657d',disabledforeground=MUTED,
+            relief='flat',borderwidth=0,highlightthickness=0,cursor='hand2',takefocus=True)
+        self.tibo_translate_button = tk.Button(self.canvas,text='翻译',command=self.translate_tibo,
+            font=('Microsoft YaHei UI',-11),fg=TEXT,bg='#365469',
+            activeforeground=TEXT,activebackground='#44657d',disabledforeground=MUTED,
+            relief='flat',borderwidth=0,highlightthickness=0,cursor='hand2',takefocus=True)
+        self.tibo_post_frame = tk.Frame(self.canvas,bg=SURFACE)
+        self.tibo_post_body = tk.Text(self.tibo_post_frame,wrap='word',state='disabled',
+            font=('Microsoft YaHei UI',-13),fg=TEXT,bg=SURFACE,relief='flat',
+            borderwidth=0,highlightthickness=0,padx=0,pady=0)
+        self.post_scroll = tk.Scrollbar(self.tibo_post_frame,command=self.tibo_post_body.yview)
+        self.tibo_post_body.configure(yscrollcommand=self.post_scroll.set)
+        self.tibo_post_body.place(relwidth=1,width=-16,relheight=1)
+        self.tibo_post_body.bind('<Configure>',lambda _:self.schedule_post_layout())
+        self.post_layout_offset = 0
+        self.post_layout_job = None
+        self.rendered_tibo_body = None
         self.canvas.bind('<ButtonPress-1>', self.press)
         self.canvas.bind('<B1-Motion>', self.drag)
         self.canvas.bind('<ButtonRelease-1>', self.release)
@@ -335,6 +393,7 @@ class Companion:
         self.root.deiconify()
         self.root.lift()
         self.root.update_idletasks()
+        self.schedule_post_layout()
         self.write_runtime()
 
     def heartbeat(self):
@@ -375,7 +434,8 @@ class Companion:
             'quota_refresh_busy': self.refresh_busy,
             'quota_refresh_error': self.quota_refresh.last_error,
             'quota_refresh_in_seconds': max(0, round(self.quota_refresh.next_due-time.monotonic())) if self.quota_refresh.enabled else None,
-            'tibo_forecast':self.tibo_model,
+            'tibo_post':self.tibo_post_model,
+            'tibo_history':self.tibo_model,
             'tibo_refresh_button_visible':bool(self.tibo_refresh_button.winfo_ismapped()),
             'tibo_source_button_visible':bool(self.tibo_source_button.winfo_ismapped()),
             'tibo_url':TIBO_URL,
@@ -401,8 +461,8 @@ class Companion:
         self.row_items = []
         self.last_frame = None
         if self.expanded:
-            self.rounded(5, 5, 360, 605, 22, BG, tags='bubble')
-            c.create_polygon(274,606,304,606,289,629, fill=BG, outline=BG, tags='bubble')
+            self.bubble_background = self.rounded(5, 5, 360, 605, 22, BG, tags='bubble')
+            c.create_polygon(274,606,304,606,289,629, fill=BG, outline=BG, tags=('bubble','below_post'))
             self.text(25, 21, '重置时间', 15, bold=True, tags='header')
             self.text(212, 25, '北京时间 · UTC+8', 11, MUTED)
             self.text(338, 18, '×', 21, MUTED, tags='collapse')
@@ -423,30 +483,32 @@ class Companion:
             self.update_quota_notice()
             c.create_window(274,142,anchor='nw',width=64,height=26,
                             window=self.refresh_button,tags='refresh')
-            self.rounded(20,296,330,132,13,SURFACE)
+            self.post_background = self.rounded(20,296,330,132,13,SURFACE)
             self.tibo_items = (
                 self.text(32,305,'',12,MUTED),
-                self.text(32,331,'',22,TEXT,True),
-                self.text(32,362,'',12,TEXT),
-                self.text(32,385,'',11,MUTED),
-                self.text(32,407,'',10,MUTED))
+                self.text(32,330,'',11,MUTED),
+                self.text(32,407,'',10,MUTED,tags='below_post'))
+            self.post_window = c.create_window(32,349,anchor='nw',width=306,
+                height=POST_BASE_HEIGHT,window=self.tibo_post_frame)
             c.create_window(264,301,anchor='nw',width=74,height=24,
                             window=self.tibo_refresh_button,tags='tibo_refresh')
-            self.rounded(20,436,330,130,13,SURFACE)
+            c.create_window(264,399,anchor='nw',width=74,height=24,window=self.tibo_post_button,tags='below_post')
+            c.create_window(207,399,anchor='nw',width=50,height=24,window=self.tibo_translate_button,tags='below_post')
+            self.rounded(20,436,330,130,13,SURFACE,tags='below_post')
             self.tibo_history_items = (
-                self.text(32,445,'',12,MUTED),
-                self.text(32,470,'',22,TEXT,True),
-                self.text(32,501,'',12,TEXT,tags='history_details'),
-                self.text(32,523,'',11,MUTED),
-                self.text(32,545,'',10,MUTED))
+                self.text(32,445,'',12,MUTED,tags='below_post'),
+                self.text(32,470,'',22,TEXT,True,tags='below_post'),
+                self.text(32,501,'',12,TEXT,tags=('history_details','below_post')),
+                self.text(32,523,'',11,MUTED,tags='below_post'),
+                self.text(32,545,'',10,MUTED,tags='below_post'))
             c.create_window(264,441,anchor='nw',width=74,height=24,
-                            window=self.tibo_source_button,tags='tibo_source')
+                            window=self.tibo_source_button,tags=('tibo_source','below_post'))
             self.update_tibo_display()
             c.tag_bind('history_details','<Enter>',lambda _:c.configure(cursor='hand2'))
             c.tag_bind('history_details','<Leave>',lambda _:c.configure(cursor=''))
-            self.footer_item = self.text(25, 583, self.footer_text(),11,MUTED,width=207)
+            self.footer_item = self.text(25, 583, self.footer_text(),11,MUTED,width=207,tags='below_post')
             c.create_window(238,577,anchor='nw',width=112,height=28,
-                            window=self.tibo_button,tags='tibo_link')
+                            window=self.tibo_button,tags=('tibo_link','below_post'))
         # Opaque backplates prevent ClearType and alpha edges mixing with the
         # Windows transparency key. Static text is not deleted every frame.
         if self.expanded:
@@ -458,8 +520,59 @@ class Companion:
             self.state_text = self.text(28,763,'点击互动',11,'#ffffff',tags='help')
         else:
             self.state_text = None
-        self.sprite_item = None if self.layered_sprite else c.create_image(PET_X,PET_Y,image=self.rendered_sprite(0,0),tags='pet')
+        if self.expanded:
+            self.shift_post_layout(self.post_layout_offset,POST_BASE_HEIGHT+self.post_layout_offset)
+        self.sprite_item = None if self.layered_sprite else c.create_image(
+            PET_X,PET_Y+self.post_layout_offset,image=self.rendered_sprite(0,0),tags='pet')
+        self.schedule_post_layout()
         self.last_label = None
+
+    def schedule_post_layout(self):
+        if not self.closed and self.post_layout_job is None:
+            self.post_layout_job = self.root.after_idle(self.resize_post)
+
+    def shift_post_layout(self, delta, height):
+        c = self.canvas
+        c.itemconfigure(self.post_window,height=height)
+        c.move('below_post',0,delta)
+        c.move('help',0,delta)
+        for item,radius in ((self.bubble_background,22),(self.post_background,13)):
+            coords = c.coords(item)
+            bottom = max(coords[1::2])
+            for index in range(1,len(coords),2):
+                if coords[index] >= bottom-radius:
+                    coords[index] += delta
+            c.coords(item,*coords)
+
+    def resize_post(self):
+        self.post_layout_job = None
+        if self.closed or not self.root.winfo_viewable() or self.drag_start:
+            return
+        anchor_y = self.root.winfo_y()+self.post_layout_offset
+        height = POST_BASE_HEIGHT
+        if self.expanded:
+            if self.tibo_post_body.winfo_width() < 2:
+                return
+            text_height = self.tibo_post_body.count('1.0','end','update','ypixels') or 0
+            screen_limit = max(POST_BASE_HEIGHT, self.root.winfo_screenheight()-self.HEIGHT+POST_BASE_HEIGHT)
+            limit = min(POST_MAX_HEIGHT,POST_BASE_HEIGHT+max(0,anchor_y),screen_limit)
+            height = min(max(20,text_height+4),limit)
+            if text_height > height:
+                self.post_scroll.place(relx=1,anchor='ne',width=16,relheight=1)
+            else:
+                self.post_scroll.place_forget()
+        new_offset = height-POST_BASE_HEIGHT
+        delta = new_offset-self.post_layout_offset
+        if not delta:
+            return
+        if self.expanded:
+            self.shift_post_layout(delta,height)
+        if self.sprite_item is not None:
+            self.canvas.move(self.sprite_item,0,delta)
+        self.post_layout_offset = new_offset
+        window_height = self.HEIGHT+new_offset
+        self.canvas.configure(height=window_height)
+        self.root.geometry(f'{self.WIDTH}x{window_height}+{self.root.winfo_x()}+{anchor_y-new_offset}')
 
     def update_quota(self):
         percent = self.model['remaining_percent']
@@ -511,14 +624,38 @@ class Companion:
             self.canvas.itemconfigure(self.footer_item,text=self.footer_text())
 
     def update_tibo_display(self):
+        post = self.tibo_post_model
+        key = (post['url'],post['body'])
+        result_key, translation, translation_error = self.translation_result
+        body = post['body']
+        status = '正在读取 X 主页…' if self.tibo_busy else post['status']
+        warning = 'post' in self.tibo_errors and not self.tibo_busy
+        if self.translation_pending == key:
+            status = ' · '.join(filter(None,(status,'正在翻译…')))
+        elif result_key == key:
+            if translation:
+                body = f'简体中文 · Google 翻译\n{translation}\n\n原文\n{body}'
+            else:
+                status = f'{status} · 翻译失败' if status else f'翻译失败 · {translation_error}'
+                warning = True
+        for item,label in zip(self.tibo_items,(post['title'],post['date'],status)):
+            self.canvas.itemconfigure(item,text=label)
+        self.canvas.itemconfigure(self.tibo_items[-1],fill=CONNECTION_WARNING if warning else MUTED)
+        if self.rendered_tibo_body != body:
+            self.tibo_post_body.configure(state='normal')
+            self.tibo_post_body.delete('1.0','end')
+            self.tibo_post_body.insert('1.0',body)
+            self.tibo_post_body.configure(state='disabled')
+            self.tibo_post_body.yview_moveto(0)
+            self.rendered_tibo_body = body
+            self.schedule_post_layout()
+        self.tibo_post_button.configure(state='normal' if post['url'] else 'disabled')
+        self.tibo_translate_button.configure(
+            state='normal' if post['has_text'] and self.translation_pending is None else 'disabled')
         model = self.tibo_model
-        color = time_color(model['seconds'])
-        for item,key in zip(self.tibo_items,('title','date','remaining','detail','status')):
-            label = '正在读取网站预估…' if key=='status' and self.tibo_busy else model[key]
-            self.canvas.itemconfigure(item,text=label,fill=color if key in ('date','remaining') else MUTED)
         for item,key in zip(self.tibo_history_items,('last_title','last_date','last_reason','last_category','last_status')):
             label=model[key]
-            if key=='last_reason':
+            if key=='last_reason' and model['last_date']!='暂无法获取':
                 suffix='（详情）'
                 if self.history_font.measure(label+suffix)>306:
                     lo,hi=0,len(label)
@@ -529,22 +666,57 @@ class Companion:
                     label=label[:lo]+'…'
                 label+=suffix
             self.canvas.itemconfigure(item,text=label)
+        self.canvas.itemconfigure(self.tibo_history_items[-1],
+            fill=CONNECTION_WARNING if 'history' in self.tibo_errors else MUTED)
         self.tibo_source_button.configure(state='normal' if model['last_url'] else 'disabled')
+
+    def translate_tibo(self):
+        post = self.tibo_post_model
+        if self.closed or not post['has_text'] or self.translation_pending is not None:
+            return
+        key = (post['url'],post['body'])
+        result_key, translation, _ = self.translation_result
+        if result_key == key and translation:
+            self.tibo_post_body.yview_moveto(0)
+            return
+        self.translation_pending = key
+        if self.expanded:
+            self.update_tibo_display()
+
+        def worker():
+            error_message = ''
+            try:
+                translated = translate_post(post['body'],cancel=self.refresh_cancel)
+            except (HTTPException,OSError,ValueError) as error:
+                translated = None
+                error_message = connection_message(error)
+            self.translation_results.put((key,translated,error_message))
+
+        threading.Thread(target=worker,daemon=True).start()
 
     def refresh_tibo(self):
         if self.closed or self.tibo_busy or not self.tibo_enabled:
             return
         self.tibo_busy = True
         self.tibo_refresh_button.configure(text='读取中',state='disabled')
+        cached = self.tibo_snapshots.copy()
         def worker():
-            try:
-                snapshot = fetch_forecast(cancel=self.refresh_cancel)
+            refreshed = {}
+            errors = {}
+            for key, fetch in (('post',fetch_latest_post), ('history',fetch_history)):
+                try:
+                    refreshed[key] = fetch(cancel=self.refresh_cancel)
+                except (HTTPException,OSError,ValueError) as error:
+                    errors[key] = connection_message(error)
                 if self.refresh_cancel.is_set():
                     return
-                save_snapshot(self.tibo_path,snapshot)
-                self.tibo_results.put(snapshot)
-            except Exception:
-                self.tibo_results.put(None)
+            if refreshed:
+                cached.update(refreshed)
+                try:
+                    save_snapshot(self.tibo_path,cached)
+                except OSError:
+                    logging.exception('Could not save Tibo cache')
+            self.tibo_results.put((cached,errors))
         self.tibo_thread = threading.Thread(target=worker,daemon=False)
         self.tibo_thread.start()
 
@@ -616,20 +788,23 @@ class Companion:
 
     def tick_tibo(self,now):
         try:
-            snapshot = self.tibo_results.get_nowait()
+            self.translation_result = self.translation_results.get_nowait()
+        except queue.Empty:
+            pass
+        else:
+            self.translation_pending = None
+        try:
+            snapshots, errors = self.tibo_results.get_nowait()
         except queue.Empty:
             pass
         else:
             self.tibo_busy = False
-            self.tibo_failed = snapshot is None
-            if snapshot is not None:
-                self.tibo_snapshot = snapshot
+            self.tibo_errors = errors
+            self.tibo_snapshots = snapshots
             self.tibo_next_refresh = time.monotonic()+300
-            self.tibo_refresh_button.configure(text='更新预估',state='normal')
-        try:
-            self.tibo_model = forecast_view(self.tibo_snapshot,now,self.tibo_failed)
-        except (ValueError,TypeError,KeyError,OverflowError,OSError):
-            self.tibo_model = forecast_view(None,now,True)
+            self.tibo_refresh_button.configure(text='刷新帖子',state='normal')
+        self.tibo_post_model = post_view(self.tibo_snapshots.get('post'),now,self.tibo_errors.get('post',''))
+        self.tibo_model = history_view(self.tibo_snapshots.get('history'),now,self.tibo_errors.get('history',''))
         if self.tibo_enabled and not self.tibo_busy and time.monotonic()>=self.tibo_next_refresh:
             self.refresh_tibo()
 
@@ -773,12 +948,12 @@ class Companion:
         image = self.rendered_sleep(elapsed) if state == State.SLEEP else self.rendered_sprite(frame,angle)
         if self.layered_sprite:
             self.layered_sprite.present(image,self.root.winfo_x()+PET_X-SPRITE_SIZE//2,
-                                        self.root.winfo_y()+PET_Y+offset-SPRITE_SIZE//2)
+                self.root.winfo_y()+PET_Y+self.post_layout_offset+offset-SPRITE_SIZE//2)
         else:
             if state == State.SLEEP or (frame,angle) != self.last_frame:
                 self.canvas.itemconfigure(self.sprite_item,image=image)
             self.current_image = image
-            self.canvas.coords(self.sprite_item,PET_X,PET_Y+offset)
+            self.canvas.coords(self.sprite_item,PET_X,PET_Y+self.post_layout_offset+offset)
         self.last_frame = frame,angle
         if self.state_text is not None and label != self.last_label:
             self.canvas.itemconfigure(self.state_text,text=label)
@@ -877,6 +1052,7 @@ class Companion:
             self.save()
         self.drag_start = None
         self.double_click = False
+        self.schedule_post_layout()
 
     def cancel_pending_click(self):
         if self.click_timer is not None:
@@ -903,6 +1079,7 @@ class Companion:
             self.drag_start = None
             self.dragged = False
             self.save()
+            self.schedule_post_layout()
 
     def collapse(self):
         self.animation.touch(time.monotonic())
@@ -950,7 +1127,8 @@ class Companion:
 
     def save(self):
         try:
-            write_json(self.settings, {'x': self.root.winfo_x(),'y': self.root.winfo_y(),
+            write_json(self.settings, {'x': self.root.winfo_x(),
+                                      'y': self.root.winfo_y()+self.post_layout_offset,
                                       'expanded': self.expanded,'sound_enabled':self.audio.enabled,
                                       'quota_alert_history': self.quota_alert.history,
                                       'quota_auto_refresh': self.quota_refresh.enabled})
@@ -1020,7 +1198,7 @@ def main():
         if sys.stderr is None:
             sys.stderr = crash_log
         faulthandler.enable(file=crash_log)
-        logging.info('Desktop companion 0.4.9 starting, pid=%s',os.getpid())
+        logging.info('Desktop companion 0.4.10 starting, pid=%s',os.getpid())
         app = Companion(args.usage,args.settings,args.windowed)
         app.root.mainloop()
         logging.info('Desktop companion closed normally')

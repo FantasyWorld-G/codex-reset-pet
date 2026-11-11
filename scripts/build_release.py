@@ -21,7 +21,7 @@ files = sorted(set(files))
 for path in files:
     if 'voice-amitaro' in path.parts:
         raise ValueError('Personal licensed voice packs must not be bundled automatically')
-    if path.name in {'usage.json','desktop-usage.json','tibo-forecast.json','auto-redeem.json','auto-redeem-state.json','state.json','auth.json','desktop-runtime.json','desktop-settings.json'} or path.suffix in {'.log','.tmp','.lock'}:
+    if path.name in {'usage.json','desktop-usage.json','tibo-forecast.json','tibo-updates.json','auto-redeem.json','auto-redeem-state.json','state.json','auth.json','desktop-runtime.json','desktop-settings.json'} or path.suffix in {'.log','.tmp','.lock'}:
         raise ValueError(f'Runtime data cannot be published: {path.name}')
 destination = ROOT/'dist'
 destination.mkdir(exist_ok=True)
