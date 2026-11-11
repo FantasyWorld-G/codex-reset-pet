@@ -1,7 +1,7 @@
 import errno
 import os
 from pathlib import Path
-import subprocess,sys,tempfile,threading,time,unittest
+import subprocess,sys,tempfile,threading,time,traceback,unittest
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
@@ -270,8 +270,8 @@ def ui_worker(directory):
             app.tibo_translate_button.invoke()
             assert app.tibo_translate_button['state']=='disabled'
             app.root.after(50,verify)
-        except Exception as error:
-            errors.append(str(error));app.close()
+        except Exception:
+            errors.append(traceback.format_exc());app.close()
     with patch.object(pet,'fetch_latest_post',fetch), patch.object(
             pet,'fetch_history',side_effect=[app.tibo_snapshots['history'],ConnectionRefusedError(),
                 URLError(OSError(errno.ENETUNREACH,'simulated offline')),history(time.time())]), patch.object(
